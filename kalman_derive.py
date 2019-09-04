@@ -123,11 +123,11 @@ xgnd = np.zeros((nstates, 1), dtype=object)
 xgnd[2, 0] = r
 xgnd[3:6, 0] = [ax, ay, az]
 xgnd[8, 0] = psi + r*dt
-xgnd[9, 0] = TAS
+xgnd[9, 0] = TAS + ax*dt
 xgnd[10:12, 0] = [magxe, magze]
 
 print()
 print("Ground model:")
-sub_py_dict(xgnd[:,0], statevars, 'self.xgnd')
-print()
-jacobian(xgnd[:,0], statevars, 'self.F')
+sub_py_dict(xgnd[:,0], statevars, 'self.x')
+print("F = np.zeros((self.nstates, self.nstates))")
+jacobian(xgnd[:,0], statevars, 'F')

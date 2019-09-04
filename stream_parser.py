@@ -359,6 +359,14 @@ def plot_roll(t, x, data):
 
 if __name__ == '__main__':
 
+    parser = argparse.ArgumentParser()
+    parser.add_argument('--pyEfis', help="Send data to pyEfis", default=False, action="store_true")
+    parser.add_argument('-s','--speed', default=2.0, type=float)
+
+    args = parser.parse_args()
+    print(args)
+    #sys.exit()
+
     # Data is taking off runway 31 at KBIS
 
     idx_func = lambda t: (t > 952092) # & (t < 952160)
@@ -371,7 +379,7 @@ if __name__ == '__main__':
 
     fn = 'mystream_8_16_11_55_48_rv_flight.csv'  # KFSD
     mag_offset = np.array([5, 22, 0])
-    idx_func = lambda t: t > 360 #t < 360  # takeoff occurs at about 360 seconds
+    idx_func = lambda t: (t > 360) & (t < 1800) #t < 360  # takeoff occurs at about 360 seconds
 
 
     data = parse_stream_file(fn, idx_func, zero_time=True)
@@ -386,8 +394,8 @@ if __name__ == '__main__':
     # plot_stream_data(data)
 
     t, x, kf = kalman_filter(fn, idx_func, mag_offset, mag_gain, zero_time=True,
-                             send_to_pyEfis=True,
-                             playback_speed=2.0)
+                             send_to_pyEfis=args.pyEfis,
+                             playback_speed=args.speed)
 
     plt.ion()
     plot_kf(t, x, data)

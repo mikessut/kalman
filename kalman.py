@@ -132,7 +132,7 @@ class EKF:
         #accel_err = (300e-6*g*np.sqrt(BW))**2
         accel_err = (.5*g)**2
         mag_err = (.1)**2
-        TAS_err = (1*K2ms)**2
+        TAS_err = (20*K2ms)**2
         #np.fill_diagonal(self.R,
         #                 np.hstack([np.ones(3)*gyro_err, np.ones(3)*accel_err,
         #                            np.ones(3)*mag_err]))
@@ -200,19 +200,30 @@ class EKF:
         self.x[6, 0] = 0
         self.x[7, 0] = 0
         self.x[8, 0] = dt*x['r'] + x['psi']
-        self.x[9, 0] = x['TAS']
+        self.x[9, 0] = x['TAS'] + x['ax']*dt
         self.x[10, 0] = x['magxe']
         self.x[11, 0] = x['magze']
-
         F = np.zeros((self.nstates, self.nstates))
+
+
         F[2, 2] = 1
+
         F[3, 3] = 1
+
         F[4, 4] = 1
+
         F[5, 5] = 1
+
+
+
         F[8, 2] = dt
         F[8, 8] = 1
+
+        F[9, 3] = dt
         F[9, 9] = 1
+
         F[10, 10] = 1
+
         F[11, 11] = 1
         self.gnd.predict(F)
 
@@ -357,9 +368,9 @@ class EKF:
         H[0, self.statei('TAS')] = 1
 
         if self.mode == 'gnd':
-            K = self.gnd.update_sensors(H, [self.statei('TAS')])
+            K = self.gnd.update_sensors(H, [self.sensori('TAS')])
         elif self.mode == 'air':
-            K = self.air.update_sensors(H, [self.statei('TAS')])
+            K = self.air.update_sensors(H, [self.sensori('TAS')])
 
         y = TAS - self.x[self.statei('TAS'), 0]
 
