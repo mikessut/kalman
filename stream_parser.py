@@ -5,6 +5,9 @@ from kalman import K2ms, ft2m
 import matplotlib.pylab as plt
 import kalman
 import argparse
+import fixgw.netfix as netfix
+import time
+import sys
 
 codes = {1: 'gps',
          3: 'accel',
@@ -39,6 +42,20 @@ def latlong2bearing(lat1, long1, lat2, long2):
     dLong = (long2 - long1)*np.pi/180
     return np.arctan2(np.sin(dLong)*np.cos(lat2*np.pi/180),
                       np.cos(lat1*np.pi/180)*np.sin(lat2*np.pi/180) - np.sin(lat1*np.pi/180)*np.cos(lat2*np.pi/180)*np.cos(dLong))
+
+
+def psi2heading(psi):
+    """
+    Yaw angle between 0 and 360
+    psi is in radians
+    """
+    if isinstance(psi, np.ndarray):
+        return np.vectorize(psi2heading)(psi)
+    if psi < 0:
+        return psi2heading(psi + 2*pi)
+    if psi > 2*pi:
+        return psi2heading(psi - 2*pi)
+    return psi*180/pi
 
 
 def parse_stream_file(fn, filter=None, zero_time=False):
@@ -83,7 +100,40 @@ def parse_stream_file(fn, filter=None, zero_time=False):
     return data
 
 
-def kalman_filter(fn, filter=None, mag_offset=np.array([0,0,0]), mag_gain=np.array([1,1,1])):
+class pyEfisInterface:
+
+    def __init__(self, playback_speed=1.0):
+        self.client = netfix.Client('127.0.0.1', 3490)
+        self.client.connect()
+        self.t0 = time.time()
+        self.playback_speed = playback_speed
+        self.t0stream = None
+
+    def update(self, t, k, sensors):
+        # wait for sim time to meet stream time
+        if self.t0stream is None:
+            self.t0stream = t
+        while (t - self.t0stream) > (time.time() - self.t0)*self.playback_speed:
+            time.sleep(.003)
+
+        self.client.writeValue("PITCH", k.getstate("theta")*180/np.pi)
+        self.client.writeValue("ROLL", k.getstate("phi")*180/np.pi)
+        self.client.writeValue("HEAD", psi2heading(k.getstate("psi")))
+        self.client.writeValue("IAS", k.getstate("TAS")/K2ms)
+        if "gps" in sensors.keys():
+            self.client.writeValue("ALT", sensors['gps'][2]/ft2m)
+        # TODO: rate of turn
+        # slip/skid
+        # Altitude
+        t = int(np.round(t))
+        sys.stdout.write(f"{t//60:02d}:{t%60:02d} IAS: {k.getstate('TAS')/K2ms:5.0f}\r")
+
+
+def kalman_filter(fn, filter=None, mag_offset=np.array([0,0,0]),
+                  mag_gain=np.array([1,1,1]),
+                  zero_time=False,
+                  send_to_pyEfis=False,
+                  playback_speed=1.0):
 
     k = kalman.EKF()
     time = []
@@ -92,12 +142,20 @@ def kalman_filter(fn, filter=None, mag_offset=np.array([0,0,0]), mag_gain=np.arr
     NINIT = 50
     mag = np.zeros(3)
     prev = {}
+    first_t = True
+    if send_to_pyEfis:
+        pyEfis = pyEfisInterface(playback_speed=playback_speed)
 
     with open(fn, 'r') as fid:
         line = fid.readline()
         while len(line) > 0:
             cols = line.split(',')
             t = float(cols[0])
+            if first_t:
+                t0 = t
+                first_t = False
+            if zero_time:
+                t -= t0
             if filter is not None:
                 if not filter(t):
                     line = fid.readline()
@@ -149,6 +207,9 @@ def kalman_filter(fn, filter=None, mag_offset=np.array([0,0,0]), mag_gain=np.arr
                     #import pdb; pdb.set_trace()
                     k.update_TAS(TAS)
                 ctr += 1
+
+                if send_to_pyEfis:
+                    pyEfis.update(t, k, sensors)
 
                 x.append(k.x)
                 time.append(t)
@@ -310,10 +371,10 @@ if __name__ == '__main__':
 
     fn = 'mystream_8_16_11_55_48_rv_flight.csv'  # KFSD
     mag_offset = np.array([5, 22, 0])
-    idx_func = lambda t: t > 0 #t < 164100
+    idx_func = lambda t: t > 360 #t < 360  # takeoff occurs at about 360 seconds
 
 
-    data = parse_stream_file(fn, idx_func)
+    data = parse_stream_file(fn, idx_func, zero_time=True)
 
     data['mag_cal'] = data['mag'].copy()
     mag_offset = np.array([6.563601938902331, -23.364970231751286, 0.6140873985288852])
@@ -324,7 +385,9 @@ if __name__ == '__main__':
     # plt.close('all')
     # plot_stream_data(data)
 
-    t, x, kf = kalman_filter(fn, idx_func, mag_offset, mag_gain)
+    t, x, kf = kalman_filter(fn, idx_func, mag_offset, mag_gain, zero_time=True,
+                             send_to_pyEfis=True,
+                             playback_speed=2.0)
 
     plt.ion()
     plot_kf(t, x, data)
