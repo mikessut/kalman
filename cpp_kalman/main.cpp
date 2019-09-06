@@ -12,6 +12,7 @@ g++ -I .\eigen test_eigen.cpp -o test_eigen
 
 */
 
+
 int main() {
 
   Kalman k;
@@ -27,12 +28,20 @@ int main() {
   //k.printAirRDiag();
   k.x(I_TAS,0) = 50;
   k.printStates();
-  cout << endl;
   //cout << "x(0) " << k.x(0,0) << endl;
-  k.predict_air(.038);
+  k.predict(.038);
+  k.printStates();
   Matrix<float,3,1> a;
   a << 2, -.2, -9;
   k.update_accel(a);
+  k.printStates();
+  a << .01 , 0 , -.02;
+  k.update_gyro(a);
+  k.printStates();
+  a << .1 , .1 , .8;
+  k.update_mag(a);
+  k.printStates();
+  k.update_TAS(55);
   //k.predict_air(.038);
   k.printStates();
 }

@@ -52,7 +52,15 @@ class KalmanMatricies:
 
     def update_sensors(self, H, sns_idx):
         assert(H.shape == (len(sns_idx), self.nstates))
+        print("R block:")
+        print(self.R[np.ix_(sns_idx, sns_idx)])
+        print("H*P*H.T:")
+        print(H.dot(self.P).dot(H.T))
         S = H.dot(self.P).dot(H.T) + self.R[np.ix_(sns_idx, sns_idx)]
+        print("S")
+        print(S)
+        #print("S.inverse()")
+        #print(np.linalg.inv(S))
         K = self.P.dot(H.T).dot(np.linalg.inv(S))
         self.P = (np.eye(self.nstates) - K.dot(H)).dot(self.P)
         assert(self.P.shape == (self.nstates, self.nstates))
@@ -101,9 +109,9 @@ class EKF:
         roll_err =  (.01*pi/180*dt)**2    # confident that roll is atan(TAS/g*<p,q,r projected to earth_rot_z>)
         yaw_err =   (.01*pi/180*dt)**2             # confidence that yaw is psi + dt*<
 
-        gnd_orient_err = (17*pi/180*dt)**2
-        earth_mag_err = (1/30*dt)
-        psi_err = .1/10*pi/180*dt  # gnd only
+        gnd_orient_err = (.01*pi/180*dt)**2
+        earth_mag_err = (1/30*dt)**2
+        #psi_err = .1/10*pi/180*dt  # gnd only
         const_TAS_err = (6.9*K2ms*dt)**2
         #np.fill_diagonal(self.Q,
         #                np.hstack([np.ones(3)*rot_err, np.ones(3)*aerr,
@@ -114,13 +122,13 @@ class EKF:
                                   ax_err, ay_err, az_err,
                                   roll_err, pitch_err, yaw_err,
                                   const_TAS_err,
-                                  np.ones(2)*earth_mag_err**2])
+                                  np.ones(2)*earth_mag_err])
 
         self.gnd.Q[i, i] = np.hstack([np.ones(2)*r_err, (10*pi/180*dt)**2,
                            ax_err, ay_err, az_err,
-                                  np.ones(2)*gnd_orient_err, psi_err**2,
+                                  np.ones(2)*gnd_orient_err, yaw_err,
                                   const_TAS_err,
-                                  np.ones(2)*(earth_mag_err/1000)**2])
+                                  np.ones(2)*earth_mag_err])
 
         #self.air.set_Q_cross_term(self.statei('ax'), self.statei('theta'), (.1*g * 4*pi/180  *dt**2))
         #self.air.set_Q_cross_term(self.statei('q'), self.statei('phi'), (.1*pi/180 * .1*pi/180  /dt**2)*20)
@@ -280,6 +288,15 @@ class EKF:
         F[11, 11] = 1
         self.air.predict(F)
 
+    def update_sensors(self, H, sns_idx):
+        if self.mode == 'gnd':
+            K = self.gnd.update_sensors(H, sns_idx)
+        elif self.mode == 'air':
+            K = self.air.update_sensors(H, sns_idx)
+        else:
+            raise Exception("Invalid mode")
+        return K
+
     def update_gyro(self, gyros):
         assert(len(gyros) == 3)
         gyros = self.Rot_sns.dot(np.vstack(gyros))
@@ -292,13 +309,8 @@ class EKF:
         H[1, 1] = 1
         H[2, 2] = 1
         i = self.sensori('wx')
-        if self.mode == 'gnd':
-            K = self.gnd.update_sensors(H, list(range(i, i+3)))
-        elif self.mode == 'air':
-            K = self.air.update_sensors(H, list(range(i, i+3)))
-        else:
-            raise Exception("Invalid mode")
-
+        K = self.update_sensors(H, list(range(i, i+3)))
+        print(K)
         self.x = self.x + K.dot(y)
 
     def update_accel(self, accels):
@@ -313,13 +325,7 @@ class EKF:
         H[1, 4] = 1
         H[2, 5] = 1
         i = self.sensori('ax')
-        if self.mode == 'gnd':
-            K = self.gnd.update_sensors(H, list(range(i, i+3)))
-        elif self.mode == 'air':
-            K = self.air.update_sensors(H, list(range(i, i+3)))
-        else:
-            raise Exception("Invalid mode")
-
+        K = self.update_sensors(H, list(range(i, i+3)))
         self.x = self.x + K.dot(y)
         assert(self.x.shape == (self.nstates, 1))
 
@@ -352,12 +358,7 @@ class EKF:
         H[2, 10] = sin(x['phi'])*sin(x['psi']) + sin(x['theta'])*cos(x['phi'])*cos(x['psi'])
         H[2, 11] = cos(x['phi'])*cos(x['theta'])
         i = self.sensori('magx')
-        if self.mode == 'gnd':
-            K = self.gnd.update_sensors(H, list(range(i, i+3)))
-        elif self.mode == 'air':
-            K = self.air.update_sensors(H, list(range(i, i+3)))
-        else:
-            raise Exception("Invalid mode")
+        K = self.gnd.update_sensors(H, list(range(i, i+3)))
 
         self.x = self.x + K.dot(y)
         assert(self.x.shape == (self.nstates, 1))
@@ -367,10 +368,7 @@ class EKF:
         H = np.zeros((1, self.nstates))
         H[0, self.statei('TAS')] = 1
 
-        if self.mode == 'gnd':
-            K = self.gnd.update_sensors(H, [self.sensori('TAS')])
-        elif self.mode == 'air':
-            K = self.air.update_sensors(H, [self.sensori('TAS')])
+        K = self.update_sensors(H, [self.sensori('TAS')])
 
         y = TAS - self.x[self.statei('TAS'), 0]
 

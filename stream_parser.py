@@ -5,7 +5,10 @@ from kalman import K2ms, ft2m
 import matplotlib.pylab as plt
 import kalman
 import argparse
-import fixgw.netfix as netfix
+try:
+    import fixgw.netfix as netfix
+except ModuleNotFoundError:
+    pass
 import time
 import sys
 

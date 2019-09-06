@@ -13,7 +13,7 @@
 #define K2ms  1852.0/3600.0   // Convert knots to m/s; 1852m = 1nm
 #define ft2m  1.0/3.28084
 
-#define AIR_GND_SWITCH_SPEED 40  // switch between gnd/air filter at this speed in knots
+#define AIR_GND_SWITCH_SPEED 50  // switch between gnd/air filter at this speed in knots
 
 // Indecies of all of the EKF states
 #define I_P      0
@@ -29,14 +29,26 @@
 #define I_MX     10
 #define I_MZ     11
 
+// Indicies of sensors (R might be only place this is used?)
+#define IS_WX 0
+#define IS_WY 1
+#define IS_WZ 2
+#define IS_AX 3
+#define IS_AY 4
+#define IS_AZ 5
+#define IS_TAS 6
+#define IS_MX  7
+#define IS_MY  8
+#define IS_MZ  9
 
-using Eigen::MatrixXd;
-using Eigen::Matrix3f;
-using Eigen::Matrix;
-using Eigen::Dynamic;
 
+using namespace Eigen;
 using namespace std;
 
+typedef enum {
+  KF_GND = 0,
+  KF_AIR = 1
+} KF_SEL_FILTER;
 
 class KalmanMatricies
 {
@@ -45,7 +57,7 @@ private:
 public:
   KalmanMatricies();
   Matrix<float, NSTATES, NSTATES> P, Q;
-  Matrix<float, NSTATES, NSENSORS> R;
+  Matrix<float, NSENSORS, NSENSORS> R;
   void predict(Eigen::Matrix<float, NSTATES, NSTATES> F);
 
   Matrix<float, NSTATES, Dynamic> update_sensors(Eigen::Matrix<float, Dynamic, NSTATES> H,
@@ -60,7 +72,9 @@ private:
   KalmanMatricies air;
   KalmanMatricies gnd;
   Matrix<float, 3, 3> Rot_sns;
-
+  KF_SEL_FILTER active_filter;
+  Matrix<float, NSTATES, Dynamic> update_sensors(Eigen::Matrix<float, Dynamic, NSTATES> H,
+                      int sns_idx, int nsensors);
 
 public:
   Matrix <float, NSTATES, 1> x;  // should be private, but public for testing
@@ -69,6 +83,9 @@ public:
   void predict_air(float dt);
   void predict_gnd(float dt);
   void update_accel(Matrix<float, 3, 1> a);
+  void update_gyro(Matrix<float, 3, 1> w);
+  void update_mag(Matrix<float, 3, 1> m);
+  void update_TAS(float tas);
   void printAirP() { std::cout << air.P << std::endl; }
   void printAirQ() { std::cout << air.Q << std::endl; }
   void printDiag(Matrix<float, Dynamic, Dynamic> M) {
@@ -77,5 +94,5 @@ public:
   };
   void printAirQDiag() { printDiag(air.Q); };
   void printAirRDiag() { printDiag(air.R); };
-  void printStates() { cout << x << endl; }
+  void printStates() { cout << x << endl << endl; }
 };

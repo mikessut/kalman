@@ -118,8 +118,7 @@ x[9, 0] = TAS + ax*dt
 x[10, 0] = magxe
 x[11, 0] = magze
 
-#sub_py_dict(x[:, 0], statevars, 'self.x')
-sub_cpp(x[:,0], statevars, 'x')
+sub_py_dict(x[:, 0], statevars, 'self.x')
 print("F = np.zeros((self.nstates, self.nstates))")
 F = jacobian(x[:, 0], statevars, 'F')
 
