@@ -17,17 +17,13 @@ void KalmanMatricies::predict(Eigen::Matrix<float, NSTATES, NSTATES> F) {
 
 Matrix<float, NSTATES, Dynamic> KalmanMatricies::update_sensors(Eigen::Matrix<float, Dynamic, NSTATES> H,
                     int sns_idx, int nsensors) {
-  cout << "R block" << endl;
-  cout << R.block(sns_idx, sns_idx, nsensors, nsensors) << endl << endl;
-  cout << "H*P*H.T" << endl;
-  cout << H*P*H.transpose() << endl << endl;
   Matrix<float, Dynamic, Dynamic> S = H*P*H.transpose() + R.block(sns_idx, sns_idx, nsensors, nsensors);
   cout << "S" << endl;
   cout << S << endl << endl;
   // cout << "S.inverse()" << endl;
   // cout << S.inverse() << endl << endl;
   Matrix<float, NSTATES, Dynamic> K = P*H.transpose()*S.inverse();
-  P = (Matrix<float, NSTATES, NSTATES>::Identity() - K*H*P);
+  P = (Matrix<float, NSTATES, NSTATES>::Identity() - K*H)*P;
   return K;
 }
 

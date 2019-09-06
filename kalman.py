@@ -52,15 +52,7 @@ class KalmanMatricies:
 
     def update_sensors(self, H, sns_idx):
         assert(H.shape == (len(sns_idx), self.nstates))
-        print("R block:")
-        print(self.R[np.ix_(sns_idx, sns_idx)])
-        print("H*P*H.T:")
-        print(H.dot(self.P).dot(H.T))
         S = H.dot(self.P).dot(H.T) + self.R[np.ix_(sns_idx, sns_idx)]
-        print("S")
-        print(S)
-        #print("S.inverse()")
-        #print(np.linalg.inv(S))
         K = self.P.dot(H.T).dot(np.linalg.inv(S))
         self.P = (np.eye(self.nstates) - K.dot(H)).dot(self.P)
         assert(self.P.shape == (self.nstates, self.nstates))
