@@ -24,4 +24,8 @@ Know issues/TODOs
 2. Rate of turn
 3. Airspeed (as derived from GPS) is very jumpy in the test data set.
 4. Implementation with baro and pitot sensors
-  a. Derive TAS from IAS using OAT
+  a. Derive TAS from IAS using OAT/pressure
+5. Should the magnetic vector be included as states? Or perhaps use the IGRF model to determine
+   magnetic inclination.
+6. Is wind vector desired? Probably -- that requires a wind frame and then body frame?  This
+   definitely requires a magnetic declination model.

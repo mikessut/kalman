@@ -24,5 +24,15 @@ int main() {
   // tmpv << 1, 2;
   // M.block(1,1, 2,2) = tmpv.asDiagonal();
   // cout << M << endl;
-  k.printAirRDiag();
+  //k.printAirRDiag();
+  k.x(I_TAS,0) = 50;
+  k.printStates();
+  cout << endl;
+  //cout << "x(0) " << k.x(0,0) << endl;
+  k.predict_air(.038);
+  Matrix<float,3,1> a;
+  a << 2, -.2, -9;
+  k.update_accel(a);
+  //k.predict_air(.038);
+  k.printStates();
 }

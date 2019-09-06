@@ -14,6 +14,11 @@ def jacobian(vector, vars, output_prefix=''):
                 if MATLAB:
                     tmp = str(tmp).replace('**', "^")
                     print(f'F({m+1},{n+1}) = {tmp};')
+                elif CPP_OUTPUT:
+                    for state_name in vars:
+                        #tmp = str(tmp).replace(str(state_name), f"x['{str(state_name)}']")
+                        tmp = re.sub(f"([^\w]|^)({state_name})([^\w]|$)", f"\\1lastx({CPP_DICT[str(state_name)]},0)\\3", str(tmp))
+                    print(f'{output_prefix}({m}, {n}) = {tmp};')
                 else:
                     for state_name in vars:
                         #tmp = str(tmp).replace(str(state_name), f"x['{str(state_name)}']")
@@ -26,12 +31,19 @@ def sub_py_dict(vector, vars, output_prefix=''):
     for m in range(len(vector)):
         if MATLAB:
             print(f'x({m+1}) = {x[m, 0]};')
+        elif CPP_OUTPUT:
+            tmp = str(vector[m])
+            for state_name in statevars:
+                #tmp = tmp.replace(str(state_name), f"x['{str(state_name)}']")
+                tmp = re.sub(f"([^\w]|^)({state_name})([^\w]|$)", f"\\1lastx({CPP_DICT[str(state_name)]},0)\\3", tmp)
+            print(f'{output_prefix}({m}, 0) = {tmp};')
         else:
             tmp = str(vector[m])
             for state_name in statevars:
                 #tmp = tmp.replace(str(state_name), f"x['{str(state_name)}']")
                 tmp = re.sub(f"([^\w]|^)({state_name})([^\w]|$)", f"\\1x['{str(state_name)}']\\3", tmp)
             print(f'{output_prefix}[{m}, 0] = {tmp}')
+
 
 # x(0)     Body-axis roll rate, pr, rad/s
 # x(1)     Body-axis pitch rate, qr, rad/s
@@ -59,7 +71,20 @@ g = symbols('g')
 dt = symbols('dt')
 nstates = 12
 statevars = np.array([p, q, r, ax, ay, az, phi, theta, psi, TAS, magxe, magze])
+CPP_DICT = {'p': 'I_P',
+            'q': 'I_Q',
+            'r': 'I_R',
+            'ax': 'I_AX',
+            'ay': 'I_AY',
+            'az': 'I_AZ',
+            'phi': 'I_ROLL',
+            'theta': 'I_PITCH',
+            'psi': 'I_YAW',
+            'TAS': 'I_TAS',
+            'magxe': 'I_MX',
+            'magze': 'I_MZ'}
 MATLAB = False
+CPP_OUTPUT = True
 
 # x = np.vstack([p, q, r, phi, theta, psi, TAS])
 
@@ -93,7 +118,8 @@ x[9, 0] = TAS + ax*dt
 x[10, 0] = magxe
 x[11, 0] = magze
 
-sub_py_dict(x[:, 0], statevars, 'self.x')
+#sub_py_dict(x[:, 0], statevars, 'self.x')
+sub_cpp(x[:,0], statevars, 'x')
 print("F = np.zeros((self.nstates, self.nstates))")
 F = jacobian(x[:, 0], statevars, 'F')
 
