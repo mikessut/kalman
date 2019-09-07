@@ -18,10 +18,6 @@ void KalmanMatricies::predict(Eigen::Matrix<float, NSTATES, NSTATES> F) {
 Matrix<float, NSTATES, Dynamic> KalmanMatricies::update_sensors(Eigen::Matrix<float, Dynamic, NSTATES> H,
                     int sns_idx, int nsensors) {
   Matrix<float, Dynamic, Dynamic> S = H*P*H.transpose() + R.block(sns_idx, sns_idx, nsensors, nsensors);
-  cout << "S" << endl;
-  cout << S << endl << endl;
-  // cout << "S.inverse()" << endl;
-  // cout << S.inverse() << endl << endl;
   Matrix<float, NSTATES, Dynamic> K = P*H.transpose()*S.inverse();
   P = (Matrix<float, NSTATES, NSTATES>::Identity() - K*H)*P;
   return K;
@@ -69,9 +65,6 @@ Kalman::Kalman() : air(), gnd() {
   air.R(6,6) = TAS_err;
   tmp3v << mag_err,mag_err,mag_err;
   air.R.block(7,7, 3,3) = tmp3v.asDiagonal();
-
-  cout << "air R: " << endl;
-  cout << air.R << endl << endl;
 
   x = Matrix<float, NSTATES, 1>::Zero();
   x(I_AZ, 0) = -g;
@@ -214,8 +207,6 @@ void Kalman::update_gyro(Matrix<float, 3, 1> w) {
   H(1,1) = 1;
   H(2,2) = 1;
   Matrix<float, NSTATES, 3> K = update_sensors(H, IS_WX, 3);
-  cout << H << endl << endl;
-  cout << K << endl << endl;
   x = x + K*y;
 }
 

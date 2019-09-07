@@ -302,7 +302,6 @@ class EKF:
         H[2, 2] = 1
         i = self.sensori('wx')
         K = self.update_sensors(H, list(range(i, i+3)))
-        print(K)
         self.x = self.x + K.dot(y)
 
     def update_accel(self, accels):

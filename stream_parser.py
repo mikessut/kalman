@@ -149,7 +149,7 @@ def kalman_filter(fn, filter=None, mag_offset=np.array([0,0,0]),
     if send_to_pyEfis:
         pyEfis = pyEfisInterface(playback_speed=playback_speed)
 
-    with open(fn, 'r') as fid:
+    with open(fn, 'r') as fid, open("output.txt", "w") as fout:
         line = fid.readline()
         while len(line) > 0:
             cols = line.split(',')
@@ -197,12 +197,16 @@ def kalman_filter(fn, filter=None, mag_offset=np.array([0,0,0]),
                 # if t > 163934:
                 #     import pdb; pdb.set_trace()
                 k.predict(dt)
+                fout.write(f"p {dt}\n")
                 if 'mag' in sensors.keys():
                     k.update_mag(sensors['mag'])
+                    fout.write(f"m {sensors['mag'][0]} {sensors['mag'][1]} {sensors['mag'][2]}\n")
                 if 'gyro' in sensors.keys():
                     k.update_gyro(sensors['gyro'])
+                    fout.write(f"g {sensors['gyro'][0]} {sensors['gyro'][1]} {sensors['gyro'][2]}\n")
                 if 'accel' in sensors.keys():
                     k.update_accel(sensors['accel'])
+                    fout.write(f"a {sensors['accel'][0]} {sensors['accel'][1]} {sensors['accel'][2]}\n")
 
                 if ('gps' in sensors.keys()) and ('gps' in prev.keys()):
                     TAS = latlong2dist(sensors['gps'][0], sensors['gps'][1],

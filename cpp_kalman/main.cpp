@@ -1,5 +1,6 @@
 
 #include <iostream>
+#include <fstream>
 #include "kalman.h"
 #include "dcm.h"
 #include <Eigen/Core>
@@ -44,4 +45,23 @@ int main() {
   k.update_TAS(55);
   //k.predict_air(.038);
   k.printStates();
+
+  ifstream ifs("output.txt");
+  ofstream ofs("test.out");
+  float dt, x, y, z;
+  string c;
+  int ctr = 0;
+  while (ctr < 10) {
+    ifs >> c;
+    if (c == "p") {
+      ifs >> dt;
+      cout << "p " << dt << endl;
+    } else if (c == "a") {
+      ifs >> x;
+      ifs >> y;
+      ifs >> z;
+      cout << "a" << x << ", " << y << ", " << z << endl;
+    }
+    ctr++;
+  }
 }
