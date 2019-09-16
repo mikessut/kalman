@@ -252,11 +252,11 @@ void Kalman::update_mag(Matrix<float, 3, 1> m)
 
 void Kalman::update_TAS(float tas)
 {
-  Matrix<float, 1, NSTATES> H;
-  H(0,0) = 1;
+  Matrix<float, 1, NSTATES> H = Matrix<float, 1, NSTATES>::Zero();
+  H(0,I_TAS) = 1;
   Matrix<float, NSTATES, 1> K = update_sensors(H, IS_TAS, 1);
   Matrix<float, 1, 1> y;
-  y(0,0) = tas - x(IS_TAS, 0);
+  y(0,0) = tas - x(I_TAS, 0);
   x = x + K*y;
 }
 

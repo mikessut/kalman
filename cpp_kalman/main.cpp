@@ -21,14 +21,15 @@ int main() {
   k.x(NSTATES-1,0) = 9.06e-01;
   k.x(8,0) = -1.0821426;
 
-  ifstream ifs("output.txt");
+  ifstream ifs("../output.txt");
   ofstream ofs("test.out");
   float dt, x, y, z;
   string c;
   int ctr = 0;
   float t = 0;
-  while (ctr < 10) {
-  //while (ifs) {
+  //while (ctr < 10) {
+  
+  while (ifs) {
     ifs >> c;
     if (c == "p") {
       ofs << t << ",";
