@@ -3,6 +3,9 @@
 #include <iostream>
 #include <cmath>
 
+#ifndef KALMAN_H
+#define KALMAN_H
+
 #define NSTATES 12
 #define NSENSORS 10
 
@@ -95,4 +98,13 @@ public:
   void printAirQDiag() { printDiag(air.Q); };
   void printAirRDiag() { printDiag(air.R); };
   void printStates() { cout << x << endl << endl; }
+  //void statesCSV(ofstream &ofs) {
+  //  for (int i=0; i < NSTATES; i++)
+  //    ofs << x(i,0) << ",";
+  //}
+  friend ostream& operator<<(ostream &ofs, const Kalman &k);
 };
+
+ostream& operator<<(ostream &ofs, const Kalman &k);
+
+#endif

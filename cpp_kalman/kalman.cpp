@@ -48,6 +48,13 @@ Kalman::Kalman() : air(), gnd() {
           earth_mag_err, earth_mag_err;
   air.Q = tmpv.asDiagonal();
 
+  tmpv << r_err, r_err, pow(10*PI/180.0*DT,2),
+          ax_err, ay_err, az_err,
+          gnd_orient_err, gnd_orient_err, yaw_err,
+          const_TAS_err,
+          earth_mag_err, earth_mag_err;
+  gnd.Q = tmpv.asDiagonal();
+
   // R init
   float BW = 50;
   // Gyro ~ 0.01 deg/rt-Hz
@@ -65,6 +72,8 @@ Kalman::Kalman() : air(), gnd() {
   air.R(6,6) = TAS_err;
   tmp3v << mag_err,mag_err,mag_err;
   air.R.block(7,7, 3,3) = tmp3v.asDiagonal();
+
+  gnd.R = air.R;
 
   x = Matrix<float, NSTATES, 1>::Zero();
   x(I_AZ, 0) = -g;
@@ -184,6 +193,7 @@ Matrix<float, NSTATES, Dynamic> Kalman::update_sensors(Eigen::Matrix<float, Dyna
   else if (active_filter == KF_AIR)
     return air.update_sensors(H, sns_idx, nsensors);
     // TODO raise?
+  throw -1;
 }
 
 
@@ -249,3 +259,9 @@ void Kalman::update_TAS(float tas)
   y(0,0) = tas - x(IS_TAS, 0);
   x = x + K*y;
 }
+
+ostream& operator<<(ostream &ofs, const Kalman &k) {
+  for (int i=0; i < NSTATES; i++)
+    ofs << k.x(i,0) << ",";
+  return ofs;
+};

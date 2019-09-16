@@ -211,8 +211,8 @@ def kalman_filter(fn, filter=None, mag_offset=np.array([0,0,0]),
                 if ('gps' in sensors.keys()) and ('gps' in prev.keys()):
                     TAS = latlong2dist(sensors['gps'][0], sensors['gps'][1],
                                        prev['gps'][1][0], prev['gps'][1][1])/(t-prev['gps'][0])
-                    #import pdb; pdb.set_trace()
                     k.update_TAS(TAS)
+                    fout.write(f"t {TAS}\n")
                 ctr += 1
 
                 if send_to_pyEfis:

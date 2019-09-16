@@ -17,50 +17,45 @@ g++ -I .\eigen test_eigen.cpp -o test_eigen
 int main() {
 
   Kalman k;
-  cout << "hello world" <<endl;
-
-
-  // Eigen::Matrix<float, 5, 5> M = Eigen::Matrix<float,5,5>::Zero();
-  // cout << M << endl;
-  // Eigen::Matrix<float, 2, 1> tmpv;
-  // tmpv << 1, 2;
-  // M.block(1,1, 2,2) = tmpv.asDiagonal();
-  // cout << M << endl;
-  //k.printAirRDiag();
-  k.x(I_TAS,0) = 50;
-  k.printStates();
-  //cout << "x(0) " << k.x(0,0) << endl;
-  k.predict(.038);
-  k.printStates();
-  Matrix<float,3,1> a;
-  a << 2, -.2, -9;
-  k.update_accel(a);
-  k.printStates();
-  a << .01 , 0 , -.02;
-  k.update_gyro(a);
-  k.printStates();
-  a << .1 , .1 , .8;
-  k.update_mag(a);
-  k.printStates();
-  k.update_TAS(55);
-  //k.predict_air(.038);
-  k.printStates();
+  k.x(NSTATES-2,0) = 3.89e-01;
+  k.x(NSTATES-1,0) = 9.06e-01;
+  k.x(8,0) = -1.0821426;
 
   ifstream ifs("output.txt");
   ofstream ofs("test.out");
   float dt, x, y, z;
   string c;
   int ctr = 0;
+  float t = 0;
   while (ctr < 10) {
+  //while (ifs) {
     ifs >> c;
     if (c == "p") {
+      ofs << t << ",";
+      ofs << k;
+      ofs << endl;
+
       ifs >> dt;
-      cout << "p " << dt << endl;
+      k.predict(dt);
+      t += dt;
     } else if (c == "a") {
       ifs >> x;
       ifs >> y;
       ifs >> z;
-      cout << "a" << x << ", " << y << ", " << z << endl;
+      k.update_accel(Vector3f(x,y,z));
+    } else if (c == "g") {
+      ifs >> x;
+      ifs >> y;
+      ifs >> z;
+      k.update_gyro(Vector3f(x,y,z));
+    } else if (c == "m") {
+      ifs >> x;
+      ifs >> y;
+      ifs >> z;
+      k.update_mag(Vector3f(x,y,z));
+    } else if (c == "t") {
+      ifs >> x;
+      k.update_TAS(x);
     }
     ctr++;
   }
