@@ -1,6 +1,7 @@
 
 import numpy as np
 from numpy import pi
+from util import head360
 from kalman import K2ms, ft2m
 import matplotlib.pylab as plt
 import kalman
@@ -45,20 +46,6 @@ def latlong2bearing(lat1, long1, lat2, long2):
     dLong = (long2 - long1)*np.pi/180
     return np.arctan2(np.sin(dLong)*np.cos(lat2*np.pi/180),
                       np.cos(lat1*np.pi/180)*np.sin(lat2*np.pi/180) - np.sin(lat1*np.pi/180)*np.cos(lat2*np.pi/180)*np.cos(dLong))
-
-
-def psi2heading(psi):
-    """
-    Yaw angle between 0 and 360
-    psi is in radians
-    """
-    if isinstance(psi, np.ndarray):
-        return np.vectorize(psi2heading)(psi)
-    if psi < 0:
-        return psi2heading(psi + 2*pi)
-    if psi > 2*pi:
-        return psi2heading(psi - 2*pi)
-    return psi*180/pi
 
 
 def parse_stream_file(fn, filter=None, zero_time=False):
@@ -121,7 +108,7 @@ class pyEfisInterface:
 
         self.client.writeValue("PITCH", k.getstate("theta")*180/np.pi)
         self.client.writeValue("ROLL", k.getstate("phi")*180/np.pi)
-        self.client.writeValue("HEAD", psi2heading(k.getstate("psi")))
+        self.client.writeValue("HEAD", head360(k.getstate("psi")))
         self.client.writeValue("IAS", k.getstate("TAS")/K2ms)
         if "gps" in sensors.keys():
             self.client.writeValue("ALT", sensors['gps'][2]/ft2m)
