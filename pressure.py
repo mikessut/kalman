@@ -3,7 +3,7 @@ from kalman import ft2m
 import numpy as np
 from util import head360
 
-
+MS2KNOTS = 1.94384
 
 RHO0 = 1.225 # kg/m^3
 P0 = 101325 # Pa (sea level std pressure)
@@ -42,6 +42,28 @@ def tas(ias, TdegC, altitude, altimeter=29.92126):
     DA = T0/L*(1-(R*T0*rho/M/P0)**(L*R/(g*M-L*R)))/ft2m
 
     return ias*np.sqrt(RHO0/rho), PA, DA
+
+
+def altitude(press, altimeter=29.92126):
+    """p = (AS**(L*R/g/M) - L/T0*P0**(L*R/g/M)*h)**(g*M/L/R)
+    press**(L*R/g/M) = (AS**(L*R/g/M) - L/T0*P0**(L*R/g/M)*h)
+    press**(L*R/g/M) - AS**(L*R/g/M) = - L/T0*P0**(L*R/g/M)*h
+    (press**(L*R/g/M) - AS**(L*R/g/M))*T0/L/(P0**(L*R/g/M)) = -h
+    """
+    AS = altimeter*inHg2PA
+    h = -(press**(L*R/g/M) - AS**(L*R/g/M))*T0/L/(P0**(L*R/g/M))
+    return h/ft2m
+
+
+def pitot_ias(press, TdegC=25.0):
+    """
+    https://en.wikipedia.org/wiki/Stagnation_pressure
+    """
+    T = 273.15 + TdegC
+    rho = P0*M/R/T
+    print("rho:", rho)
+    v = np.sqrt(press*2/rho)
+    return v*MS2KNOTS
 
 
 def wind_vector(v_total, v_aircraft, mag_angle=True):
