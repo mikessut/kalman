@@ -3,6 +3,7 @@
 #include <fstream>
 #include "kalman.h"
 #include "dcm.h"
+#include "pressure.h"
 #include <Eigen/Core>
 
 using namespace std;
@@ -16,6 +17,13 @@ g++ -I .\eigen test_eigen.cpp -o test_eigen
 
 int main() {
 
+  float altitude, ias, tas;
+  //airspeed_altitude(float abs_press, float diff_press, float alt_setting, float oat,
+  airspeed_altitude(80000.0, 5000.0, 30.12, 19.2,
+                    &altitude, &ias, &tas);
+
+  printf("Alt: %.0f; IAS: %.1f; TAS: %.1f", altitude, ias, tas);
+  return 0;
   Kalman k;
   k.x(NSTATES-2,0) = 3.89e-01;
   k.x(NSTATES-1,0) = 9.06e-01;
@@ -28,7 +36,7 @@ int main() {
   int ctr = 0;
   float t = 0;
   //while (ctr < 10) {
-  
+
   while (ifs) {
     ifs >> c;
     if (c == "p") {

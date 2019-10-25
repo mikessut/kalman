@@ -5,7 +5,7 @@ from util import head360
 
 MS2KNOTS = 1.94384
 
-RHO0 = 1.225 # kg/m^3
+RHO0 = 1.225 # kg/m^3  (sea level standard temperature air density)
 P0 = 101325 # Pa (sea level std pressure)
 L = .0065  # K/m  (std lapse rate)
 T0 = 288.15  # C (sea level std temperature)
@@ -51,18 +51,20 @@ def altitude(press, altimeter=29.92126):
     (press**(L*R/g/M) - AS**(L*R/g/M))*T0/L/(P0**(L*R/g/M)) = -h
     """
     AS = altimeter*inHg2PA
+    print(AS, press**(L*R/g/M))
     h = -(press**(L*R/g/M) - AS**(L*R/g/M))*T0/L/(P0**(L*R/g/M))
     return h/ft2m
 
 
-def pitot_ias(press, TdegC=25.0):
+def pitot_ias(press):
     """
     https://en.wikipedia.org/wiki/Stagnation_pressure
+
+    tas = ias*np.sqrt(RHO0/rho)
     """
-    T = 273.15 + TdegC
-    rho = P0*M/R/T
-    print("rho:", rho)
-    v = np.sqrt(press*2/rho)
+
+    #print(RHO0)
+    v = np.sqrt(press*2/RHO0)
     return v*MS2KNOTS
 
 
@@ -82,7 +84,7 @@ def wind_vector(v_total, v_aircraft, mag_angle=True):
         return vwind
 
 
-
+"""
 head_track = 360
 head_mag = 10
 
@@ -93,3 +95,13 @@ vtot = np.array([np.cos(head_track*np.pi/180), np.sin(head_track*np.pi/180)])*gn
 vaircraft = np.array([np.cos(head_mag*np.pi/180), np.sin(head_mag*np.pi/180)])*tas1
 
 print(wind_vector(vtot,vaircraft))
+"""
+"""
+  airspeed_altitude(80000.0, 5000.0, 30.12, 19.2,
+                    &altitude, &ias, &tas);
+
+  printf("Alt: %.0f; IAS: %.1f; TAS: %.1f", altitude, ias, tas);
+  """
+
+diff_press = 50*1e2  # 50 mbar
+print(f"Alt: {altitude(80000, 30.12)}; IAS: {pitot_ias(5000)}; TAS: {tas(pitot_ias(5000), 19.2, altitude(80000, 30.12), 30.12)}")

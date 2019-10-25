@@ -1,10 +1,11 @@
 # https://stackoverflow.com/questions/2481269/how-to-make-a-simple-c-makefile
 CXX := g++
+CC := g++
 # -g is for debug with gdb
 # CPPFLAGS := -I c:\trash\eigen -std=c++17
-CPPFLAGS := -I c:\work\eigen 
+CPPFLAGS := -I c:\work\eigen
 
-OBJS = main.o kalman.o dcm.o
+OBJS = main.o kalman.o dcm.o pressure.o
 
 kf: $(OBJS)
 	$(CXX) -o kf $(OBJS)
@@ -17,6 +18,8 @@ main.o: main.cpp
 kalman.o: kalman.cpp kalman.h
 
 dcm.o: dcm.h dcm.cpp
+
+pressure.o: pressure.h pressure.c
 
 
 clean:
