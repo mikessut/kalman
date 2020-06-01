@@ -28,7 +28,9 @@ while True:
         if len(gyros) == 3:
             k.update_gyro(gyros)
 
-        print(k.quaternion().euler_angles()*180/np.pi)
+        #print(k.quaternion().euler_angles()*180/np.pi)
+        euler_angles = k.quaternion().euler_angles()*180/np.pi
+        print(f"{euler_angles[0]:7.1f}{euler_angles[1]:7.1f}{euler_angles[2]:7.1f}")
 
     except (KeyboardInterrupt, SystemExit):
         import pdb; pdb.set_trace()
