@@ -4,12 +4,15 @@ import kalman
 from numpy import pi
 import numpy as np
 
-KALMAN_MODE = False
-RAW_MODE = True
-NUM_INIT = 10
+KALMAN_MODE = True
+RAW_MODE = False
+SENSOR_MODE = False
+NUM_INIT = 100
 n = 0
 
 k = kalman.EKF()
+k.mode = 'air'
+k.x[k.state_names.index('TAS'), 0] = 120 / kalman.K2ms
 
 init = {'mag': np.zeros(3)}
 #k.x[k.state_names.index('magze'), 0] = 1400
@@ -19,6 +22,68 @@ s = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
 s.bind(('', 5555))
 last = 0
 
+
+class SensorTriad:
+
+    NUM_INIT = NUM_INIT
+
+    def __init__(self):
+        self._init = True
+        self._ctr = 0
+        self._offset = np.zeros((3, ))
+        self._value = np.zeros((3, ))
+
+    def update(self, *args):
+        if len(args) < 3:
+            return
+        x, y, z = args
+        if self._init:
+            self._offset += np.array([x, y, z])
+            self._ctr += 1
+            if self._ctr >= self.NUM_INIT:
+                self._init = False
+                self._offset /= self.NUM_INIT
+        self._value = np.array([x, y, z]) - self._offset
+
+    def get(self):
+        if self._init:
+            return np.zeros((3,))
+        return self._value
+
+    def __getattr__(self, item):
+        if item not in ['x', 'y', 'z']:
+            raise ValueError("Only supports x,y,z . methods")
+        if item == 'x':
+            return self.get()[0]
+        elif item == 'y':
+            return self.get()[1]
+        elif item == 'z':
+            return self.get()[2]
+
+    def initialized(self):
+        return not self._init
+
+
+class AccelTriad(SensorTriad):
+
+    def update(self, *args):
+        if len(args) < 3:
+            return
+        x, y, z = args
+        if self._init:
+            self._offset += np.array([x, y, z])
+            self._ctr += 1
+            if self._ctr >= self.NUM_INIT:
+                self._init = False
+                self._offset /= self.NUM_INIT
+                self._offset[2] -= kalman.g
+        self._value = np.array([x, y, z]) - self._offset
+
+
+gyros = SensorTriad()
+accels = AccelTriad()
+mags = SensorTriad()
+
 while True:
     try:
         msg, adr = s.recvfrom(8192)
@@ -27,17 +92,12 @@ while True:
         cols = msg.split(b',')
         dt = float(cols[0]) - last
         last = float(cols[0])
-        accels = [float(x) for x in cols[2:5]]
-        gyros = [float(x) for x in cols[6:9]]
-        mag = [float(x) for x in cols[10:13]]
-        if (len(accels) < 3) or (len(gyros) < 3) or (len(mag) < 3):
-            continue
-        if n < NUM_INIT:
-            init['mag'] += mag
-            n += 1
-            continue
-        elif n == NUM_INIT:
-            # init kalman
+        accels.update(*[float(x) for x in cols[2:5]])
+        gyros.update(*[float(x) for x in cols[6:9]])
+        mags.update(*[float(x) for x in cols[10:13]])
+        if SENSOR_MODE:
+            print(f"{accels.x:7.2f}{accels.y:7.2f}{accels.z:7.2f}{gyros.x:7.3f}{gyros.y:7.3f}{gyros.z:7.3f}")
+        if False:
             init['mag'] /= NUM_INIT
             init['mag'] = k.Rot_sns.dot(np.vstack(init['mag']))[:,0]
             print(init['mag'])
@@ -51,12 +111,15 @@ while True:
             n += 1
 
         if KALMAN_MODE:
+            if (not accels.initialized()) or (not gyros.initialized()):
+                print("init")
+                continue
             k.predict()
             #k.update(gyros, accels, mag, .1)
             #import pdb; pdb.set_trace()
-            k.update_gyro(gyros)
-            k.update_accel(accels)
-            k.update_mag(mag)
+            k.update_gyro(gyros.get())
+            k.update_accel(accels.get())
+            #k.update_mag(mag)
             #k.update_gyros_accels(gyros, accels)
             roll = k.x[k.state_names.index('phi'), 0]*180/pi
             pitch = k.x[k.state_names.index('theta'), 0]*180/pi

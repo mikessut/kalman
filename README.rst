@@ -4,6 +4,11 @@ Overview
 This is an effort to derive and implement an Extended Kalman Filter to use for
 an arcraft AHRS system.
 
+References
+==========
+
+https://core.ac.uk/download/pdf/41774601.pdf
+
 Requirements
 ============
 
