@@ -26,11 +26,12 @@ while True:
             k.update_accel(accels)
 
         if len(gyros) == 3:
+            gyros[0] += 5*np.pi/180
             k.update_gyro(gyros)
 
         #print(k.quaternion().euler_angles()*180/np.pi)
         euler_angles = k.quaternion().euler_angles()*180/np.pi
-        print(f"{euler_angles[0]:7.1f}{euler_angles[1]:7.1f}{euler_angles[2]:7.1f}")
+        print(f"{euler_angles[0]:7.1f}{euler_angles[1]:7.1f}{euler_angles[2]:7.1f}  {k.wb[0]*180/np.pi:6.2f}{k.wb[1]*180/np.pi:6.2f}{k.wb[2]*180/np.pi:6.2f} {k.ab[0]:6.2f}{k.ab[1]:6.2f}{k.ab[2]:6.2f}")
 
     except (KeyboardInterrupt, SystemExit):
         import pdb; pdb.set_trace()
