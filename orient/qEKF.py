@@ -15,10 +15,12 @@ class qEKF:
         self.ab = np.zeros((3,))
 
         self.P = np.zeros((13, 13))
-        qerr = .001
+        self.P[3, 3] = 1  # position relative to north
+        self.P[7:13, 7:13] = np.diag([1, 1, 1, 1, 1, 1])*0
+        qerr = .001*0
         werr = .01
-        wb_err = .00001
-        ab_err = .00001
+        wb_err = .00001*0
+        ab_err = .00001*0
         self.Q = np.diag(np.hstack([qerr*np.ones((4,)), werr*np.ones((3,)),
                                     wb_err*np.ones((3,)), ab_err*np.ones((3,))]))
 
@@ -26,6 +28,9 @@ class qEKF:
         self.Raccel = np.diag(accel_err*np.ones((3,)))
         gyro_err = .002
         self.Rgyro = np.diag(gyro_err * np.ones((3,)))
+
+        mag_err = .01
+        self.Rmag = np.diag(mag_err * np.ones((3,)))
 
         self.last_update = time.clock()
 
@@ -82,6 +87,27 @@ class qEKF:
         S = H.dot(self.P).dot(H.T) + self.Rgyro
         K = self.P.dot(H.T).dot(np.linalg.inv(S))
         x = self.state_vec() + K.dot(y)
+        self.set_state_vec(x)
+
+        self.P = (np.eye(13) - K.dot(H)).dot(self.P)
+
+    def update_mag(self, mags):
+        """
+        See derive.py for discussion of how this works.
+        """
+        q = Quaternion(*self.q)
+        mag_inertial = (q * Quaternion.from_vec(mags) * q.inv()).as_ndarray()[1:]
+        mag_inertial[2] = 0.0
+        mag_inertial /= np.linalg.norm(mag_inertial)
+        mag_body = (q.inv() * Quaternion.from_vec(mag_inertial) * q).as_ndarray()[1:]
+
+        y = mag_body - (q.inv() * Quaternion.from_vec(np.array([1.0, 0, 0])) * q).as_ndarray()[1:]
+        y = np.vstack(y)
+        H = self.calc_mag_H()
+        S = H.dot(self.P).dot(H.T) + self.Rmag
+        K = self.P.dot(H.T).dot(np.linalg.inv(S))
+        x = self.state_vec() + K.dot(y)
+        #import pdb; pdb.set_trace()
         self.set_state_vec(x)
 
         self.P = (np.eye(13) - K.dot(H)).dot(self.P)
@@ -151,4 +177,21 @@ class qEKF:
         H[2, 2] = -19.6*q0**2*q2/(q0**2 + q1**2 + q2**2 + q3**2)**2 + 19.6*q1**2*q2/(q0**2 + q1**2 + q2**2 + q3**2)**2 + 19.6*q2**3/(q0**2 + q1**2 + q2**2 + q3**2)**2 - 19.6*q2*q3**2/(q0**2 + q1**2 + q2**2 + q3**2)**2 - 19.6*q2/(q0**2 + q1**2 + q2**2 + q3**2)
         H[2, 3] = -19.6*q0**2*q3/(q0**2 + q1**2 + q2**2 + q3**2)**2 + 19.6*q1**2*q3/(q0**2 + q1**2 + q2**2 + q3**2)**2 + 19.6*q2**2*q3/(q0**2 + q1**2 + q2**2 + q3**2)**2 - 19.6*q3**3/(q0**2 + q1**2 + q2**2 + q3**2)**2 + 19.6*q3/(q0**2 + q1**2 + q2**2 + q3**2)
         H[2, 12] = 1
+        return H
+
+    def calc_mag_H(self):
+        q0, q1, q2, q3 = self.q
+        H = np.zeros((3, 13))
+        H[0, 0] = -2.0*q0**3/(q0**2 + q1**2 + q2**2 + q3**2)**2 - 2.0*q0*q1**2/(q0**2 + q1**2 + q2**2 + q3**2)**2 + 2.0*q0*q2**2/(q0**2 + q1**2 + q2**2 + q3**2)**2 + 2.0*q0*q3**2/(q0**2 + q1**2 + q2**2 + q3**2)**2 + 2.0*q0/(q0**2 + q1**2 + q2**2 + q3**2)
+        H[0, 1] = -2.0*q0**2*q1/(q0**2 + q1**2 + q2**2 + q3**2)**2 - 2.0*q1**3/(q0**2 + q1**2 + q2**2 + q3**2)**2 + 2.0*q1*q2**2/(q0**2 + q1**2 + q2**2 + q3**2)**2 + 2.0*q1*q3**2/(q0**2 + q1**2 + q2**2 + q3**2)**2 + 2.0*q1/(q0**2 + q1**2 + q2**2 + q3**2)
+        H[0, 2] = -2.0*q0**2*q2/(q0**2 + q1**2 + q2**2 + q3**2)**2 - 2.0*q1**2*q2/(q0**2 + q1**2 + q2**2 + q3**2)**2 + 2.0*q2**3/(q0**2 + q1**2 + q2**2 + q3**2)**2 + 2.0*q2*q3**2/(q0**2 + q1**2 + q2**2 + q3**2)**2 - 2.0*q2/(q0**2 + q1**2 + q2**2 + q3**2)
+        H[0, 3] = -2.0*q0**2*q3/(q0**2 + q1**2 + q2**2 + q3**2)**2 - 2.0*q1**2*q3/(q0**2 + q1**2 + q2**2 + q3**2)**2 + 2.0*q2**2*q3/(q0**2 + q1**2 + q2**2 + q3**2)**2 + 2.0*q3**3/(q0**2 + q1**2 + q2**2 + q3**2)**2 - 2.0*q3/(q0**2 + q1**2 + q2**2 + q3**2)
+        H[1, 0] = 4.0*q0**2*q3/(q0**2 + q1**2 + q2**2 + q3**2)**2 - 4.0*q0*q1*q2/(q0**2 + q1**2 + q2**2 + q3**2)**2 - 2.0*q3/(q0**2 + q1**2 + q2**2 + q3**2)
+        H[1, 1] = 4.0*q0*q1*q3/(q0**2 + q1**2 + q2**2 + q3**2)**2 - 4.0*q1**2*q2/(q0**2 + q1**2 + q2**2 + q3**2)**2 + 2.0*q2/(q0**2 + q1**2 + q2**2 + q3**2)
+        H[1, 2] = 4.0*q0*q2*q3/(q0**2 + q1**2 + q2**2 + q3**2)**2 - 4.0*q1*q2**2/(q0**2 + q1**2 + q2**2 + q3**2)**2 + 2.0*q1/(q0**2 + q1**2 + q2**2 + q3**2)
+        H[1, 3] = 4.0*q0*q3**2/(q0**2 + q1**2 + q2**2 + q3**2)**2 - 2.0*q0/(q0**2 + q1**2 + q2**2 + q3**2) - 4.0*q1*q2*q3/(q0**2 + q1**2 + q2**2 + q3**2)**2
+        H[2, 0] = -4.0*q0**2*q2/(q0**2 + q1**2 + q2**2 + q3**2)**2 - 4.0*q0*q1*q3/(q0**2 + q1**2 + q2**2 + q3**2)**2 + 2.0*q2/(q0**2 + q1**2 + q2**2 + q3**2)
+        H[2, 1] = -4.0*q0*q1*q2/(q0**2 + q1**2 + q2**2 + q3**2)**2 - 4.0*q1**2*q3/(q0**2 + q1**2 + q2**2 + q3**2)**2 + 2.0*q3/(q0**2 + q1**2 + q2**2 + q3**2)
+        H[2, 2] = -4.0*q0*q2**2/(q0**2 + q1**2 + q2**2 + q3**2)**2 + 2.0*q0/(q0**2 + q1**2 + q2**2 + q3**2) - 4.0*q1*q2*q3/(q0**2 + q1**2 + q2**2 + q3**2)**2
+        H[2, 3] = -4.0*q0*q2*q3/(q0**2 + q1**2 + q2**2 + q3**2)**2 - 4.0*q1*q3**2/(q0**2 + q1**2 + q2**2 + q3**2)**2 + 2.0*q1/(q0**2 + q1**2 + q2**2 + q3**2)
         return H
