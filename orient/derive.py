@@ -4,7 +4,7 @@ import quaternion
 from quaternion import Quaternion
 import numpy as np
 
-quaternion.np.sqrt = sqrt
+quaternion.sqrt = sqrt
 
 q0, q1, q2, q3 = symbols(['q0', 'q1', 'q2', 'q3'])
 wx, wy, wz = symbols(['wx', 'wy', 'wz'])
@@ -17,7 +17,7 @@ dt = symbols('dt')
 states = [q0, q1, q2, q3, wx, wy, wz, wbx, wby, wbz, abx, aby, abz]
 # Predict
 
-q = Quaternion(1, .5*wx*dt, .5*wy*dt, .5*wz*dt) * Quaternion(q0, q1, q2, q3)
+q = Quaternion(q0, q1, q2, q3) * Quaternion(1.0, .5*wx*dt, .5*wy*dt, .5*wz*dt)
 q.normalize()
 
 nextstate = [q[0], q[1], q[2], q[3], wx, wy, wz, wbx, wby, wbz, abx, aby, abz]
@@ -34,7 +34,7 @@ for n in range(13):
 
 # Accel update
 #
-
+print("Accel update")
 # Map state into measurement space
 q = Quaternion(q0, q1, q2, q3)
 g = np.array([0,0,9.8], dtype=float)
@@ -48,6 +48,7 @@ for n in range(3):
             print(f"H[{n}, {m}] = {tmp}")
 
 
+print("Gyro update")
 # gyro update
 gyros = np.array([wx,wy,wz]) + np.array([wbx, wby, wbz])
 H = np.zeros((3, 13), dtype=object)
@@ -59,6 +60,7 @@ for n in range(3):
             print(f"H[{n}, {m}] = {tmp}")
 
 
+print("Mag update")
 # Magnetometer update
 # Only consider the normalized vector projected onto the global xy plane
 

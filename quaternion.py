@@ -1,5 +1,6 @@
 
 import numpy as np
+from numpy import arctan2, arcsin, sqrt
 from scipy.optimize import minimize
 
 """
@@ -68,7 +69,7 @@ class Quaternion:
                           -self.d/mag)
 
     def norm(self):
-        return np.sqrt(self.a**2 + self.b**2 + self.c**2 + self.d**2)
+        return sqrt(self.a**2 + self.b**2 + self.c**2 + self.d**2)
 
     def conj(self):
         return Quaternion(self.a, -self.b, -self.c, -self.d)
@@ -100,10 +101,10 @@ class Quaternion:
         psi: heading
         :return:
         """
-        phi = np.arctan2(2*(self.a*self.b + self.c*self.d),
+        phi = arctan2(2*(self.a*self.b + self.c*self.d),
                          1-2*(self.b**2 + self.c**2))
-        theta = np.arcsin(2*(self.a*self.c - self.d*self.b))
-        psi = np.arctan2(2*(self.a*self.d+self.b*self.c),
+        theta = arcsin(2*(self.a*self.c - self.d*self.b))
+        psi = arctan2(2*(self.a*self.d+self.b*self.c),
                          1-2*(self.c**2+self.d**2))
         return np.array([phi, theta, psi])
 

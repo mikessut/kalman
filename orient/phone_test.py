@@ -1,6 +1,6 @@
 
 import socket
-import qEKF
+from orient import qEKF
 import numpy as np
 
 s = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
@@ -27,11 +27,11 @@ while True:
             k.update_accel(accels)
 
         if len(gyros) == 3:
-            gyros[2] += 2*np.pi/180
+            gyros[0] += 2*np.pi/180
             k.update_gyro(gyros)
 
-        if len(mags) == 3:
-            k.update_mag(mags)
+        # if len(mags) == 3:
+        #     k.update_mag(mags)
 
         #print(k.quaternion().euler_angles()*180/np.pi)
         euler_angles = k.quaternion().euler_angles()*180/np.pi
