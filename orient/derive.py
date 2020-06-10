@@ -18,7 +18,7 @@ states = [q0, q1, q2, q3, wx, wy, wz, wbx, wby, wbz, abx, aby, abz]
 # Predict
 
 q = Quaternion(q0, q1, q2, q3) * Quaternion(1.0, .5*wx*dt, .5*wy*dt, .5*wz*dt)
-q.normalize()
+#q.normalize()
 
 nextstate = [q[0], q[1], q[2], q[3], wx, wy, wz, wbx, wby, wbz, abx, aby, abz]
 for n in range(7):
