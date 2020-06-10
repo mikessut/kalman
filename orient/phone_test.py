@@ -2,14 +2,39 @@
 import socket
 from orient import qEKF
 import numpy as np
-import msvcrt
+try:
+    import msvcrt
+except ModuleNotFoundError:
+    pass
 import matplotlib.pyplot as plt
+from util import head360
+try:
+    import fixgw.netfix as netfix
+except ModuleNotFoundError:
+    pass
+
+
+
+class FIXGWInterface:
+
+    def __init__(self):
+        self.client = netfix.Client('127.0.0.1', 3490)
+        self.client.connect()
+
+    def update(self, q):
+        roll, pitch, head = q.euler_angles()*180/np.pi
+        self.client.writeValue("PITCH", -pitch)
+        self.client.writeValue("ROLL", roll)
+        self.client.writeValue("HEAD", head360(-head*np.pi/180))
+
 
 s = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
 
 s.bind(('', 5555))
 
 k = qEKF.qEKF()
+fixgw = FIXGWInterface()
+
 
 done = False
 while not done:
@@ -41,9 +66,10 @@ while not done:
     print(f"{euler_angles[0]:7.1f}{euler_angles[1]:7.1f}{euler_angles[2]:7.1f}  {k.wb[0]*180/np.pi:6.2f}{k.wb[1]*180/np.pi:6.2f}{k.wb[2]*180/np.pi:6.2f} {k.ab[0]:6.2f}{k.ab[1]:6.2f}{k.ab[2]:6.2f} {k.w[0]*180/np.pi:6.2f}{k.w[1]*180/np.pi:6.2f}{k.w[2]*180/np.pi:6.2f}")
     d = np.diag(k.P)
     #print(d[7:10])
+    fixgw.update(k.quaternion())
 
-    if msvcrt.kbhit():
-        done = True
+    #if msvcrt.kbhit():
+    #    done = True
 
 
 f, ax = plt.subplots(4,1, sharex=True)
