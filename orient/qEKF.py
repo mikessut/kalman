@@ -23,13 +23,43 @@ class DataLog:
         self.log.append((time.time(), 'accel', accel))
 
     def mag(self, mag):
-        self.log.append((time.time(), 'mag', mag))
+        if len(mag) == 3:
+            self.log.append((time.time(), 'mag', mag))
 
     def predict_times(self):
         return np.array([x[0] for x in self.log if x[1] == 'predict'])
 
     def predict_dt(self):
         return np.array([x[2] for x in self.log if x[1] == 'predict'])
+
+    def get_mag(self):
+        t = np.array([x[0] for x in self.log if x[1] == 'mag'])
+        return t, np.array([x[2] for x in self.log if x[1] == 'mag'])
+
+    def get_eulers(self):
+        t = np.array([x[0] for x in self.log if x[1] == 'set_state'])
+        return t, np.array([Quaternion(*x[2][:4].flatten()).euler_angles()*180/np.pi
+                            for x in self.log if x[1] == 'set_state'])
+
+    def get_w(self):
+        t = np.array([x[0] for x in self.log if x[1] == 'set_state'])
+        return t, np.array([x[2][4:7].flatten()*180/np.pi
+                            for x in self.log if x[1] == 'set_state'])
+
+    def get_wb(self):
+        t = np.array([x[0] for x in self.log if x[1] == 'set_state'])
+        return t, np.array([x[2][7:10].flatten()*180/np.pi
+                            for x in self.log if x[1] == 'set_state'])
+
+    def get_ab(self):
+        t = np.array([x[0] for x in self.log if x[1] == 'set_state'])
+        return t, np.array([x[2][10:13].flatten()
+                            for x in self.log if x[1] == 'set_state'])
+
+    def get_P_diag(self):
+        t = np.array([x[0] for x in self.log if x[1] == 'set_state'])
+        return t, np.array([np.diag(x[3])
+                            for x in self.log if x[1] == 'set_state'])
 
 
 class qEKF:
@@ -44,13 +74,21 @@ class qEKF:
         self.P = np.zeros((13, 13))
         # position relative to north
         self.P[0, 0] = 1*0
-        self.P[3, 3] = 1*0
-        self.P[:4, :4] = np.diag(.01*np.ones((4,)))*0
+        #self.P[3, 3] = 1*0
+        #self.P[1:4, 1:4] = np.diag(.01*np.ones((3,)))
+        self.P[0, 0] = .3**2  # varies from ~.7 to 1.0
+        # ~ 10 deg error in pitch/roll ~ sin(10/2)
+        self.P[1, 1] = (.1**2)
+        self.P[2, 2] = (.1 ** 2)
+        self.P[3, 3] = 1  # 180 deg error for heading
 
         # Bias errors
-        self.P[7:13, 7:13] = np.diag(.1*np.ones((6,)))*.1
+        self.P[7:10, 7:10] = np.diag(np.ones((3,)))*(5*np.pi/180)**2
+        self.P[10:13, 10:13] = np.diag(np.ones((3,))) * (2) ** 2
+
         qerr = .001*0
-        werr = .001
+        # assumes constant ang rate; could be wrong by as much as 10deg/sec in .5 sec?
+        werr = (10*np.pi/180)**2 / .5
         wb_err = .001*0
         ab_err = .00001*0
         self.Q = np.diag(np.hstack([qerr*np.ones((4,)), werr*np.ones((3,)),
@@ -86,7 +124,7 @@ class qEKF:
             self.last_update = time.time()
 
         F = self.calc_F(dt)
-        self.P = F.dot(self.P).dot(F.T) + self.Q
+        self.P = F.dot(self.P).dot(F.T) + self.Q*dt
 
         q = Quaternion(*self.q) * Quaternion(1, *(.5*self.w*dt))
         q.normalize()

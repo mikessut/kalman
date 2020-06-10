@@ -32,8 +32,9 @@ while not done:
         gyros[0] += 2*np.pi/180
         k.update_gyro(gyros)
 
-    # if len(mags) == 3:
-    #     k.update_mag(mags)
+    if len(mags) == 3:
+        k.update_mag(mags)
+    #k.log.mag(mags)
 
     #print(k.quaternion().euler_angles()*180/np.pi)
     euler_angles = k.quaternion().euler_angles()*180/np.pi
@@ -45,10 +46,23 @@ while not done:
         done = True
 
 
-f, ax = plt.subplots()
-ax.plot(np.diff(k.log.predict_times()))
+f, ax = plt.subplots(4,1, sharex=True)
+ax[0].plot(*k.log.get_eulers())
+ax[0].set_ylabel('Eulers (deg)')
+ax[1].plot(*k.log.get_w())
+ax[1].set_ylabel('w (dps)')
+ax[2].plot(*k.log.get_wb())
+ax[2].set_ylabel('wb (dps)')
+ax[3].plot(*k.log.get_ab())
+ax[3].set_ylabel('ab ms2')
 
-f, ax = plt.subplots()
-ax.plot(k.log.predict_dt())
+f, ax = plt.subplots(4,1, sharex=True)
+t, P = k.log.get_P_diag()
+ax[0].plot(t, P[:, :4])
+ax[1].plot(t, P[:, 4:7])
+ax[2].plot(t, P[:, 7:10])
+ax[3].plot(t, P[:, 10:13])
 
 plt.show()
+
+import pdb; pdb.set_trace()
