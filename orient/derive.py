@@ -43,6 +43,7 @@ H = np.zeros((3, 13), dtype=object)
 for n in range(3):
     for m in range(13):
         tmp = diff(accel[n], states[m])
+        tmp = tmp.subs(q0**2 + q1**2 + q2**2 + q3**2, 1.0)
         H[n, m] = tmp
         if tmp != 0:
             print(f"H[{n}, {m}] = {tmp}")
@@ -55,6 +56,7 @@ H = np.zeros((3, 13), dtype=object)
 for n in range(3):
     for m in range(13):
         tmp = diff(gyros[n], states[m])
+        tmp = tmp.subs(q0**2 + q1**2 + q2**2 + q3**2, 1.0)
         H[n, m] = tmp
         if tmp != 0:
             print(f"H[{n}, {m}] = {tmp}")
@@ -86,6 +88,19 @@ H = np.zeros((3, 13), dtype=object)
 for n in range(3):
     for m in range(13):
         tmp = diff(north_body[n], states[m])
+        tmp = tmp.subs(q0**2 + q1**2 + q2**2 + q3**2, 1.0)
+        H[n, m] = tmp
+        if tmp != 0:
+            print(f"H[{n}, {m}] = {tmp}")
+
+
+print("Alternative mag approach:")
+# Alternatively, what if we call the measurement the north vector
+H = np.zeros((2, 13), dtype=object)
+for n in range(2):
+    for m in range(13):
+        tmp = diff(mag_inertial[n], states[m])
+        tmp = tmp.subs(q0**2 + q1**2 + q2**2 + q3**2, 1.0)
         H[n, m] = tmp
         if tmp != 0:
             print(f"H[{n}, {m}] = {tmp}")

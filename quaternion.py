@@ -1,7 +1,10 @@
 
 import numpy as np
 from numpy import arctan2, arcsin, sqrt
-from scipy.optimize import minimize
+try:
+    from scipy.optimize import minimize
+except ImportError:
+    pass
 
 """
 https://en.wikipedia.org/wiki/Quaternions_and_spatial_rotation#Using_quaternion_as_rotations
