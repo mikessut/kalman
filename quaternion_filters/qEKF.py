@@ -3,74 +3,7 @@ import numpy as np
 from numpy import sqrt
 from quaternion import Quaternion
 import time
-
-
-class DataLog:
-
-    def __init__(self):
-        self.log = []
-
-    def predict(self, dt, x, P):
-        self.log.append((time.time(), 'predict', dt, x, P))
-
-    def set_state(self, x, P):
-        self.log.append((time.time(), 'set_state', x, P))
-
-    def gyro(self, gyros):
-        self.log.append((time.time(), 'gyro', gyros))
-
-    def accel(self, accel):
-        self.log.append((time.time(), 'accel', accel))
-
-    def mag(self, mag):
-        if len(mag) == 3:
-            self.log.append((time.time(), 'mag', mag))
-
-    def predict_times(self):
-        return np.array([x[0] for x in self.log if x[1] == 'predict'])
-
-    def predict_dt(self):
-        return np.array([x[2] for x in self.log if x[1] == 'predict'])
-
-    def get_mag(self):
-        t = np.array([x[0] for x in self.log if x[1] == 'mag'])
-        return t, np.array([x[2] for x in self.log if x[1] == 'mag'])
-
-    def get_eulers(self):
-        t = np.array([x[0] for x in self.log if x[1] == 'set_state'])
-        return t, np.array([Quaternion(*x[2][:4].flatten()).euler_angles()*180/np.pi
-                            for x in self.log if x[1] == 'set_state'])
-
-    def get_gyro(self):
-        """raw measurement"""
-        t = np.array([x[0] for x in self.log if x[1] == 'gyro'])
-        return t, np.array([x[2] for x in self.log if x[1] == 'gyro'])
-
-    def get_accel(self):
-        """raw measurement"""
-        t = np.array([x[0] for x in self.log if x[1] == 'accel'])
-        return t, np.array([x[2] for x in self.log if x[1] == 'accel'])
-
-    def get_w(self):
-        """ from state"""
-        t = np.array([x[0] for x in self.log if x[1] == 'set_state'])
-        return t, np.array([x[2][4:7].flatten()*180/np.pi
-                            for x in self.log if x[1] == 'set_state'])
-
-    def get_wb(self):
-        t = np.array([x[0] for x in self.log if x[1] == 'set_state'])
-        return t, np.array([x[2][7:10].flatten()*180/np.pi
-                            for x in self.log if x[1] == 'set_state'])
-
-    def get_ab(self):
-        t = np.array([x[0] for x in self.log if x[1] == 'set_state'])
-        return t, np.array([x[2][10:13].flatten()
-                            for x in self.log if x[1] == 'set_state'])
-
-    def get_P_diag(self):
-        t = np.array([x[0] for x in self.log if x[1] == 'set_state'])
-        return t, np.array([np.diag(x[3])
-                            for x in self.log if x[1] == 'set_state'])
+from .filter_log import DataLog
 
 
 class qEKF:

@@ -1,6 +1,6 @@
 
 import socket
-from orient import qEKF
+from quaternion_filters import qEKF, fixed_wing_EKF
 import numpy as np
 try:
     import msvcrt
@@ -15,6 +15,8 @@ except ModuleNotFoundError:
 import threading
 import time
 
+
+SEND2FIXGW = False
 
 codes = {1: 'gps',
          3: 'accel',
@@ -68,23 +70,32 @@ def run_func(done, k, fixgw, raw_log):
             k.update_accel(data['accel'])
 
         if len(data['gyro']) == 3:
-            data['gyro'][0] += 2*np.pi/180
+            #data['gyro'][0] += 2*np.pi/180
             k.update_gyro(data['gyro'])
 
         if len(data['mag']) == 3:
             k.update_mag(data['mag'])
 
+        k.update_tas(10*fixed_wing_EKF.KTS2MS)
+
         #print(k.quaternion().euler_angles()*180/np.pi)
         euler_angles = k.quaternion().euler_angles()*180/np.pi
-        print(f"{euler_angles[0]:7.1f}{euler_angles[1]:7.1f}{euler_angles[2]:7.1f}  {k.wb[0]*180/np.pi:6.2f}{k.wb[1]*180/np.pi:6.2f}{k.wb[2]*180/np.pi:6.2f} {k.ab[0]:6.2f}{k.ab[1]:6.2f}{k.ab[2]:6.2f} {k.w[0]*180/np.pi:6.2f}{k.w[1]*180/np.pi:6.2f}{k.w[2]*180/np.pi:6.2f}")
+        print(k)
+        #print(f"{euler_angles[0]:7.1f}{euler_angles[1]:7.1f}{euler_angles[2]:7.1f}  {k.wb[0]*180/np.pi:6.2f}{k.wb[1]*180/np.pi:6.2f}{k.wb[2]*180/np.pi:6.2f} {k.ab[0]:6.2f}{k.ab[1]:6.2f}{k.ab[2]:6.2f} {k.w[0]*180/np.pi:6.2f}{k.w[1]*180/np.pi:6.2f}{k.w[2]*180/np.pi:6.2f}")
+        #print(f"{euler_angles[0]:7.1f}{euler_angles[1]:7.1f}{euler_angles[2]:7.1f} {k.w[0]*180/np.pi:6.2f}{k.w[1]*180/np.pi:6.2f}{k.w[2]*180/np.pi:6.2f} {k.tas/fixed_wing_EKF.KTS2MS:.1f} {k.a[0]/fixed_wing_EKF.G:6.2f}{k.a[1]/fixed_wing_EKF.G:6.2f}{k.a[2]/fixed_wing_EKF.G:6.2f}")
         d = np.diag(k.P)
         #print(d[7:10])
-        fixgw.update(k.quaternion())
+        if SEND2FIXGW:
+            fixgw.update(k.quaternion())
 
 
 
-k = qEKF.qEKF()
-fixgw = FIXGWInterface()
+#k = qEKF.qEKF()
+k = fixed_wing_EKF.FixedWingEKF()
+if SEND2FIXGW:
+    fixgw = FIXGWInterface()
+else:
+    fixgw = None
 done = threading.Event()
 raw_log = []
 done.clear()
@@ -98,7 +109,6 @@ while True:
         done.set()
         break
 
-import pdb; pdb.set_trace()
 f, ax = plt.subplots(4,1, sharex=True)
 ax[0].plot(*k.log.get_eulers())
 ax[0].set_ylabel('Eulers (deg)')
