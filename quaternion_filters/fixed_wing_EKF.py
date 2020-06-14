@@ -9,6 +9,7 @@ from .filter_log import DataLog
 G = 9.81
 KTS2MS = 0.514444
 
+
 class FixedWingEKF:
 
     def __init__(self):
@@ -117,7 +118,10 @@ class FixedWingEKF:
         self.q.normalize()
         self.q = self.q.as_ndarray()
 
-        # Gyro and accel prediction is constant
+        # Accel
+        self.a = (q.inv()*Quaternion.from_vec([0,0,G])*q).as_ndarray()[1:]
+
+        # Gyro prediction is constant
 
         # TAS prediction
         # self.tas = self.tas + self.a[0]*dt
@@ -182,7 +186,7 @@ class FixedWingEKF:
 
     def update_tas(self, tas):
         self.log.tas(tas)
-        y = np.array([[tas - self.tas]])
+        y = np.array([[tas - self.tas],])
         H = np.zeros((1,11))
         H[0, 10] = 1
         S = H.dot(self.P).dot(H.T) + self.Rtas
@@ -194,16 +198,6 @@ class FixedWingEKF:
 
     def quaternion(self):
         return Quaternion(*self.q)
-
-    def accel(self):
-        return self.a
-
-    def rot_rates(self):
-        """Rotational rates in body coordinates rad/sec"""
-        return self.w
-
-    def tas(self):
-        return self.tas
 
     def __repr__(self):
         euler_angles = self.quaternion().euler_angles()*180/np.pi
@@ -258,9 +252,18 @@ class FixedWingEKF:
         F[3, 7] = -dt*q2/2
         F[3, 8] = dt*q1/2
         F[3, 9] = dt*q0/2
-        F[4, 4] = 1
-        F[5, 5] = 1
-        F[6, 6] = 1
+        F[4, 0] = -2*G*q2
+        F[4, 1] = 2*G*q3
+        F[4, 2] = -2*G*q0
+        F[4, 3] = 2*G*q1
+        F[5, 0] = 2*G*q1
+        F[5, 1] = 2*G*q0
+        F[5, 2] = 2*G*q3
+        F[5, 3] = 2*G*q2
+        F[6, 0] = 2*G*q0
+        F[6, 1] = -2*G*q1
+        F[6, 2] = -2*G*q2
+        F[6, 3] = 2*G*q3
         F[7, 7] = 1
         F[8, 8] = 1
         F[9, 9] = 1

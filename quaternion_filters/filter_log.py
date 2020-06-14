@@ -3,6 +3,10 @@ import time
 import numpy as np
 from quaternion import Quaternion
 
+G = 9.81
+KTS2MS = 0.514444
+
+
 class DataLog:
 
     def __init__(self):
@@ -52,20 +56,27 @@ class DataLog:
         t = np.array([x[0] for x in self.log if x[1] == 'accel'])
         return t, np.array([x[2] for x in self.log if x[1] == 'accel'])
 
-    def get_w(self):
+    def get_tas(self):
+        """raw measurement"""
+        t = np.array([x[0] for x in self.log if x[1] == 'tas'])
+        return t, np.array([x[2]/KTS2MS for x in self.log if x[1] == 'tas'])
+
+    def get_a_state(self):
         """ from state"""
         t = np.array([x[0] for x in self.log if x[1] == 'set_state'])
-        return t, np.array([x[2][4:7].flatten()*180/np.pi
+        return t, np.array([x[2][4:7].flatten()/G
                             for x in self.log if x[1] == 'set_state'])
 
-    def get_wb(self):
+    def get_w_state(self):
+        """ from state"""
         t = np.array([x[0] for x in self.log if x[1] == 'set_state'])
         return t, np.array([x[2][7:10].flatten()*180/np.pi
                             for x in self.log if x[1] == 'set_state'])
 
-    def get_ab(self):
+    def get_tas_state(self):
+        """ from state"""
         t = np.array([x[0] for x in self.log if x[1] == 'set_state'])
-        return t, np.array([x[2][10:13].flatten()
+        return t, np.array([x[2][10]
                             for x in self.log if x[1] == 'set_state'])
 
     def get_P_diag(self):
