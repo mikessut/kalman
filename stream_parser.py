@@ -23,31 +23,6 @@ codes = {1: 'gps',
          }
 
 
-def latlong2dist(lat1, long1, lat2, long2):
-    R = 6357000
-    dLat = (lat2 - lat1)*np.pi/180
-    dLong = (long2 - long1)*np.pi/180
-    a = np.sin(dLat/2) * np.sin(dLat/2) \
-        + np.cos(lat1*np.pi/180) * np.cos(lat2*np.pi/180) * \
-          np.sin(dLong/2) * np.sin(dLong/2)
-    c = 2 * np.arctan2(np.sqrt(a), np.sqrt(1-a))
-    d = R * c  # Distance in m
-    return d
-
-
-def latlong2bearing(lat1, long1, lat2, long2):
-    """
-    # https://www.igismap.com/formula-to-find-bearing-or-heading-angle-between-two-points-latitude-longitude/
-    # θ = atan2(sin(Δlong)*cos(lat2), cos(lat1)*sin(lat2) − sin(lat1)*cos(lat2)*cos(Δlong))
-
-    Definition of direction is the traditional North 0 deg, east 90 deg, etc.
-    """
-
-    dLong = (long2 - long1)*np.pi/180
-    return np.arctan2(np.sin(dLong)*np.cos(lat2*np.pi/180),
-                      np.cos(lat1*np.pi/180)*np.sin(lat2*np.pi/180) - np.sin(lat1*np.pi/180)*np.cos(lat2*np.pi/180)*np.cos(dLong))
-
-
 def parse_stream_file(fn, filter=None, zero_time=False):
     data = {}
     for c, name in codes.items():

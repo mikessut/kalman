@@ -14,9 +14,10 @@ except ModuleNotFoundError:
     pass
 import threading
 import time
+from latlong import latlong2dist
 
 
-SEND2FIXGW = False
+SEND2FIXGW = True
 
 codes = {1: 'gps',
          3: 'accel',
@@ -34,19 +35,24 @@ class FIXGWInterface:
         self.client = netfix.Client('127.0.0.1', 3490)
         self.client.connect()
 
-    def update(self, q):
-        roll, pitch, head = q.euler_angles()*180/np.pi
+    def update(self, k: fixed_wing_EKF.FixedWingEKF):
+        roll, pitch, head = k.quaternion().euler_angles()*180/np.pi
         self.client.writeValue("PITCH", -pitch)
         self.client.writeValue("ROLL", roll)
         self.client.writeValue("HEAD", head360(-head*np.pi/180))
 
+        self.client.writeValue("ALAT", -k.accel()[0]/fixed_wing_EKF.G)
 
+        # TODO: this isn't really IAS
+        self.client.writeValue("IAS", k.tas()/fixed_wing_EKF.KTS2MS)
 
 
 def run_func(done, k, fixgw, raw_log):
     s = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
 
     s.bind(('', 5555))
+
+    gps = []
 
     while not done.is_set():
 
@@ -76,15 +82,23 @@ def run_func(done, k, fixgw, raw_log):
         if len(data['mag']) == 3:
             k.update_mag(data['mag'])
 
-        k.update_tas(10*fixed_wing_EKF.KTS2MS)
+        if len(data['gps']) > 0:
+            if len(gps) == 2:
+                gps[0] = gps[1]
+                gps[1] = (time.time(), data['gps'])  # time, (lat, lng, alt)
+                dt = gps[1][0] - gps[0][0]
+                d = latlong2dist(gps[0][1][0], gps[0][1][1],
+                                 gps[1][1][0], gps[1][1][1])
+                print(f"dt: {dt}, d: {d}, speed (m/s): {d/dt}")
+                k.update_tas(d/dt)
+            else:
+                gps.append((time.time(), data['gps']))
+
+
 
         #print(k.quaternion().euler_angles()*180/np.pi)
         euler_angles = k.quaternion().euler_angles()*180/np.pi
         print(k)
-        #print(f"{euler_angles[0]:7.1f}{euler_angles[1]:7.1f}{euler_angles[2]:7.1f}  {k.wb[0]*180/np.pi:6.2f}{k.wb[1]*180/np.pi:6.2f}{k.wb[2]*180/np.pi:6.2f} {k.ab[0]:6.2f}{k.ab[1]:6.2f}{k.ab[2]:6.2f} {k.w[0]*180/np.pi:6.2f}{k.w[1]*180/np.pi:6.2f}{k.w[2]*180/np.pi:6.2f}")
-        #print(f"{euler_angles[0]:7.1f}{euler_angles[1]:7.1f}{euler_angles[2]:7.1f} {k.w[0]*180/np.pi:6.2f}{k.w[1]*180/np.pi:6.2f}{k.w[2]*180/np.pi:6.2f} {k.tas/fixed_wing_EKF.KTS2MS:.1f} {k.a[0]/fixed_wing_EKF.G:6.2f}{k.a[1]/fixed_wing_EKF.G:6.2f}{k.a[2]/fixed_wing_EKF.G:6.2f}")
-        d = np.diag(k.P)
-        #print(d[7:10])
         if SEND2FIXGW:
             fixgw.update(k.quaternion())
 

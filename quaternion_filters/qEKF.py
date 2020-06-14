@@ -135,6 +135,9 @@ class qEKF:
     def quaternion(self):
         return Quaternion(*self.q)
 
+    def __repr__(self):
+        return f"{euler_angles[0]:7.1f}{euler_angles[1]:7.1f}{euler_angles[2]:7.1f}  {k.wb[0]*180/np.pi:6.2f}{k.wb[1]*180/np.pi:6.2f}{k.wb[2]*180/np.pi:6.2f} {k.ab[0]:6.2f}{k.ab[1]:6.2f}{k.ab[2]:6.2f} {k.w[0]*180/np.pi:6.2f}{k.w[1]*180/np.pi:6.2f}{k.w[2]*180/np.pi:6.2f}"
+
     def calc_F(self, dt):
         q0, q1, q2, q3 = self.q
         wx, wy, wz = self.w
