@@ -8,6 +8,7 @@ from .filter_log import DataLog
 
 G = 9.81
 KTS2MS = 0.514444
+FT2M = 0.3048
 
 
 class FixedWingEKF:
@@ -18,6 +19,7 @@ class FixedWingEKF:
         self.a = np.array([0.0, 0, G], dtype=float)
         self.w = np.array([0.0, 0, 0], dtype=float)
         self.tas = 0
+        self.alt = 0  # not a state, just passing through for display
 
         self.P = np.zeros((11, 11))
 
@@ -33,23 +35,29 @@ class FixedWingEKF:
 
         qerr = 0
         # Accel model is coordinated turn assumption. How far from this could we be?
-        aerr = (.17*G)**2 / .5
-        werr = (10*np.pi/180)**2 / 1  # 10 deg / sec
-        tas_err = (80*KTS2MS)**2 / 10  # () / 5  # 80 knots in 5 seconds
-        self.Q = np.diag(np.hstack([qerr*np.ones((4,)), aerr*np.ones((3,)),
-                                    werr*np.ones((3,)), tas_err]))
+        aerr_x = (.1*G)**2 / 1
+        aerr_y = (.1*G)**2 / 1
+        aerr_z = (.1*G)**2 / 1
+        werr_x = (100*np.pi/180)**2 / 1  # 10 deg / sec
+        werr_y = (100*np.pi/180)**2 / 1  # 10 deg / sec
+        werr_z = (100*np.pi/180)**2 / 1   # 10 deg / sec
+        tas_err = (1*KTS2MS)**2 / 1  # () / 5  # 80 knots in 5 seconds
+        self.Q = np.diag(np.hstack([qerr*np.ones((4,)),
+                                    aerr_x, aerr_y, aerr_z,
+                                    werr_x, werr_y, werr_z, tas_err]))
 
-        accel_err = .01
+        accel_err = .5
         self.Raccel = np.diag(accel_err*np.ones((3,)))
-        gyro_err = .001
+        gyro_err = .0001
         self.Rgyro = np.diag(gyro_err * np.ones((3,)))
 
-        mag_err = .004
+        mag_err = .01
         self.Rmag = np.diag(mag_err * np.ones((3,)))
 
         self.Rtas = (1*KTS2MS)**2
 
         self.last_update = time.time()
+        self.t0 = time.time()
         self.log = DataLog()
 
     def state_vec(self):
@@ -201,7 +209,7 @@ class FixedWingEKF:
 
     def __repr__(self):
         euler_angles = self.quaternion().euler_angles()*180/np.pi
-        return f"{euler_angles[0]:7.1f}{euler_angles[1]:7.1f}{euler_angles[2]:7.1f} {self.w[0]*180/np.pi:6.2f}{self.w[1]*180/np.pi:6.2f}{self.w[2]*180/np.pi:6.2f} {self.tas/KTS2MS:.1f} {self.a[0]/G:6.2f}{self.a[1]/G:6.2f}{self.a[2]/G:6.2f}"
+        return f"{time.time()-self.t0:5.0f}{euler_angles[0]:7.1f}{euler_angles[1]:7.1f}{euler_angles[2]:7.1f} {self.w[0]*180/np.pi:6.2f}{self.w[1]*180/np.pi:6.2f}{self.w[2]*180/np.pi:6.2f} {self.tas/KTS2MS:.1f} {self.a[0]/G:6.2f}{self.a[1]/G:6.2f}{self.a[2]/G:6.2f}"
 
     def calc_mag_H(self):
         q0, q1, q2, q3 = self.q

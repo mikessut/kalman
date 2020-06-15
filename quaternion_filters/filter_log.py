@@ -76,7 +76,7 @@ class DataLog:
     def get_tas_state(self):
         """ from state"""
         t = np.array([x[0] for x in self.log if x[1] == 'set_state'])
-        return t, np.array([x[2][10]
+        return t, np.array([x[2][10]/KTS2MS
                             for x in self.log if x[1] == 'set_state'])
 
     def get_P_diag(self):
