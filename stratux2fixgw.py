@@ -37,3 +37,11 @@ while True:
         netfix_client.writeValue("VS", vs)
         #print(f"alt: {alt}; vs: {vs}")
         #print(f"slipski: {slipskid}")
+    elif msg[1] == 0x0a:
+        # ownship report
+        msg = msg[1:]
+        alt = struct.unpack('>h', msg[11:13])[0]
+        tmp = struct.unpack('BB', msg[14:16])
+        gnd_speed = (tmp[0] << 4) | (tmp[1] >> 4)
+        print(f"gnd_speed: {gnd_speed}")
+        netfix_client.writeValue("IAS", gnd_speed)
