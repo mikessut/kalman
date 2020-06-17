@@ -12,6 +12,9 @@ class DataLog:
     def __init__(self):
         self.log = []
 
+    def t0(self):
+        return float(self.log[0][0])
+
     def predict(self, dt, x, P):
         self.log.append((time.time(), 'predict', dt, x, P))
 
@@ -39,47 +42,47 @@ class DataLog:
 
     def get_mag(self):
         t = np.array([x[0] for x in self.log if x[1] == 'mag'])
-        return t, np.array([x[2] for x in self.log if x[1] == 'mag'])
+        return t-self.t0(), np.array([x[2] for x in self.log if x[1] == 'mag'])
 
     def get_eulers(self):
         t = np.array([x[0] for x in self.log if x[1] == 'set_state'])
-        return t, np.array([Quaternion(*x[2][:4].flatten()).euler_angles()*180/np.pi
+        return t-self.t0(), np.array([Quaternion(*x[2][:4].flatten()).euler_angles()*180/np.pi
+                            for x in self.log if x[1] == 'set_state'])
+
+    def get_tas(self):
+        """raw measurement"""
+        t = np.array([x[0] for x in self.log if x[1] == 'tas'])
+        return t-self.t0(), np.array([x[2]/KTS2MS for x in self.log if x[1] == 'tas'])
+
+    def get_accel(self):
+        """raw measurement"""
+        t = np.array([x[0] for x in self.log if x[1] == 'accel'])
+        return t-self.t0(), np.array([x[2]/G for x in self.log if x[1] == 'accel'])
+
+    def get_a_state(self):
+        """ from state"""
+        t = np.array([x[0] for x in self.log if x[1] == 'set_state'])
+        return t-self.t0(), np.array([x[2][4:7].flatten()/G
                             for x in self.log if x[1] == 'set_state'])
 
     def get_gyro(self):
         """raw measurement"""
         t = np.array([x[0] for x in self.log if x[1] == 'gyro'])
-        return t, np.array([x[2] for x in self.log if x[1] == 'gyro'])
-
-    def get_accel(self):
-        """raw measurement"""
-        t = np.array([x[0] for x in self.log if x[1] == 'accel'])
-        return t, np.array([x[2] for x in self.log if x[1] == 'accel'])
-
-    def get_tas(self):
-        """raw measurement"""
-        t = np.array([x[0] for x in self.log if x[1] == 'tas'])
-        return t, np.array([x[2]/KTS2MS for x in self.log if x[1] == 'tas'])
-
-    def get_a_state(self):
-        """ from state"""
-        t = np.array([x[0] for x in self.log if x[1] == 'set_state'])
-        return t, np.array([x[2][4:7].flatten()/G
-                            for x in self.log if x[1] == 'set_state'])
+        return t-self.t0(), np.array([x[2]*180/np.pi for x in self.log if x[1] == 'gyro'])
 
     def get_w_state(self):
         """ from state"""
         t = np.array([x[0] for x in self.log if x[1] == 'set_state'])
-        return t, np.array([x[2][7:10].flatten()*180/np.pi
+        return t-self.t0(), np.array([x[2][7:10].flatten()*180/np.pi
                             for x in self.log if x[1] == 'set_state'])
 
     def get_tas_state(self):
         """ from state"""
         t = np.array([x[0] for x in self.log if x[1] == 'set_state'])
-        return t, np.array([x[2][10]/KTS2MS
+        return t-self.t0(), np.array([x[2][10]/KTS2MS
                             for x in self.log if x[1] == 'set_state'])
 
     def get_P_diag(self):
         t = np.array([x[0] for x in self.log if x[1] == 'set_state'])
-        return t, np.array([np.diag(x[3])
+        return t-self.t0(), np.array([np.diag(x[3])
                             for x in self.log if x[1] == 'set_state'])

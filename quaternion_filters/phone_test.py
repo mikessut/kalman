@@ -15,7 +15,7 @@ except ModuleNotFoundError:
     pass
 import threading
 import time
-from latlong import latlong2dist
+from latlong import latlong2dist, latlong2bearing
 import argparse
 
 
@@ -38,7 +38,8 @@ class FIXGWInterface:
         self.client.connect()
 
     def update(self, k: fixed_wing_EKF.FixedWingEKF):
-        roll, pitch, head = k.quaternion().euler_angles()*180/np.pi
+        q = k.quaternion()
+        roll, pitch, head = q.euler_angles()*180/np.pi
         self.client.writeValue("PITCH", -pitch)
         self.client.writeValue("ROLL", roll)
         self.client.writeValue("HEAD", head360(-head*np.pi/180))
@@ -50,6 +51,9 @@ class FIXGWInterface:
 
         # Dummy in GPS altitude
         self.client.writeValue("ALT", k.alt/fixed_wing_EKF.FT2M)
+
+
+        self.client.writeValue("ROT", -(q*quaternion.Quaternion.from_vec(k.w)*q.inv()).as_ndarray()[3]*180/np.pi)
 
 
 
@@ -131,7 +135,7 @@ def run_func(args, done, k, fixgw, raw_log):
             #data['gyro'][0] += 2*np.pi/180
             k.update_gyro(data['gyro'][1:])
 
-        if len(data['mag']) == 4:
+        if (len(data['mag']) == 4):
             k.update_mag(data['mag'][1:] + np.array(args.mag_offset))
 
         if len(data['gps']) > 0:
@@ -141,7 +145,12 @@ def run_func(args, done, k, fixgw, raw_log):
                 dt = gps[1][0] - gps[0][0]
                 d = latlong2dist(gps[0][1], gps[0][2],
                                  gps[1][1], gps[1][2])
-                print(f"dt: {dt}, d: {d}, speed (m/s): {d/dt}")
+                #print(f"dt: {dt}, d: {d}, speed (m/s): {d/dt}")
+                if d > 5.0:
+                    bearing = -latlong2bearing(gps[0][1], gps[0][2],
+                                               gps[1][1], gps[1][2])
+                    print(f"GPS bearing: {bearing*180/np.pi}")
+                    #k.update_bearing(bearing)
                 if args.dummy_tas is None:
                     k.update_tas(d/dt)
                 k.alt = data['gps'][3]
@@ -151,8 +160,6 @@ def run_func(args, done, k, fixgw, raw_log):
         if args.dummy_tas is not None:
             k.update_tas(args.dummy_tas*fixed_wing_EKF.KTS2MS)
         # k.update_tas(120*fixed_wing_EKF.KTS2MS)
-
-
 
         #print(k.quaternion().euler_angles()*180/np.pi)
         euler_angles = k.quaternion().euler_angles()*180/np.pi
@@ -194,7 +201,7 @@ while True:
         done.set()
         break
 
-f, ax = plt.subplots(4,1, sharex=True)
+f, ax = plt.subplots(5,1, sharex=True)
 ax[0].plot(*k.log.get_eulers())
 ax[0].set_ylabel('Eulers (deg)')
 ax[1].plot(*k.log.get_w_state())
@@ -204,8 +211,11 @@ ax[2].plot(*k.log.get_a_state())
 ax[2].set_ylabel('a_state (g)')
 ax[2].plot(*k.log.get_accel(), 'k')
 ax[3].plot(*k.log.get_tas_state())
-ax[3].plot(*k.log.get_tas())
+ax[3].plot(*k.log.get_tas(), 'k')
 ax[3].set_ylabel('tas (kts)')
+
+ax[4].plot(*k.log.get_mag())
+ax[4].set_ylabel('mag')
 
 f, ax = plt.subplots(4,1, sharex=True)
 t, P = k.log.get_P_diag()
