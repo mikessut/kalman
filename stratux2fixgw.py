@@ -2,6 +2,7 @@ import socket
 import struct
 import fixgw.netfix as netfix
 import math
+from gdl90 import decodeGDL90
 
 s = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
 s.bind(('', 4000))
@@ -11,13 +12,12 @@ netfix_client.connect()
 
 while True:
     msg, adr = s.recvfrom(8192)
-    #print(adr)
-    #print(msg)
-    #print(f"0x{struct.unpack('B', msg[1:2])[0]:02X}")
-    #msg = struct.unpack('B'*len(msg), msg)
+    msg = decodeGDL90(msg)
 
-    if msg[1] == 0x4c:
-        msg = msg[1:]
+    if len(msg) < 1:
+        continue
+
+    if msg[0] == 0x4c:
         roll      = struct.unpack('>h', msg[4:6])[0]/10.0
         pitch     = struct.unpack('>h', msg[6:8])[0]/10.0
         heading   = struct.unpack('>h', msg[8:10])[0]/10.0
@@ -37,11 +37,9 @@ while True:
         netfix_client.writeValue("VS", vs)
         #print(f"alt: {alt}; vs: {vs}")
         #print(f"slipski: {slipskid}")
-    elif msg[1] == 0x0a:
+    elif msg[0] == 0x0a:
         # ownship report
-        msg = msg[1:]
         alt = struct.unpack('>h', msg[11:13])[0]
         tmp = struct.unpack('BB', msg[14:16])
         gnd_speed = (tmp[0] << 4) | (tmp[1] >> 4)
-        print(f"gnd_speed: {gnd_speed}")
         netfix_client.writeValue("IAS", gnd_speed)
