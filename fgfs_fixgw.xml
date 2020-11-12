@@ -1,0 +1,113 @@
+<?xml version="1.0"?> 
+<!-- This file goes in Protocol directory for FlightGear simulator, e.g.:
+C:\Program Files\FlightGear 2020.3.2\data\Protocol
+
+It is used to define the protocol used to communicate with flightgear_node.py
+
+In nasal console, run:
+fgcommand("add-io-channel", {"config": "generic,socket,out,10,192.168.2.103,6789,udp,fgfs_fixgw", "name": "test"});
+ (to remove)
+ fgcommand("remove-io-channel", {"name": "test"});
+
+Sim properties:
+http://wiki.flightgear.org/Aero_input_and_outputs
+Aerodynamic rotational rates in rad/sec (does not include wind effects):
+
+   /fdm/jsbsim/velocities/p-rad_sec  (roll)
+   /fdm/jsbsim/velocities/q-rad_sec  (pitch)
+   /fdm/jsbsim/velocities/r-rad_sec  (yaw)
+Aerodynamic rotational rates in rad/sec (includes wind effects, if any):
+
+   /fdm/jsbsim/velocities/p-aero-rad_sec
+   /fdm/jsbsim/velocities/q-aero-rad_sec
+   /fdm/jsbsim/velocities/r-aero-rad_sec
+
+print(getprop("/fdm/jsbsim/velocities/p-rad_sec"));
+-->
+ <PropertyList>
+ <generic>
+ 
+    <output>
+      <!-- <line_separator>newline</line_separator>
+      <var_separator>newline</var_separator> -->
+      <binary_mode>true</binary_mode>
+ 
+      <chunk>
+        <name>speed</name>
+        <format>V=%d</format>
+        <type>float</type>
+        <node>/velocities/airspeed-kt</node>
+      </chunk>
+
+      <chunk>
+        <name>altitude</name>
+        <type>float</type>
+        <node>/position/altitude-ft</node>
+      </chunk>      
+ 
+      <chunk>
+        <name>heading</name>
+        <format>H=%.6f</format>
+        <type>float</type>
+        <node>/orientation/heading-deg</node>
+      </chunk>
+
+      <chunk>
+        <name>roll</name>
+        <format>R=%.6f</format>
+        <type>float</type>
+        <node>/orientation/roll-deg</node>
+      </chunk>
+
+      <chunk>
+        <name>pitch</name>
+        <format>P=%.6f</format>
+        <type>float</type>
+        <node>/orientation/pitch-deg</node>
+      </chunk>      
+   
+      <chunk>
+        <name>roll-rate</name>
+        <format>dR=%.6f</format>
+        <type>float</type>
+        <node>/fdm/jsbsim/velocities/p-aero-rad_sec</node>
+      </chunk>  
+
+      <chunk>
+        <name>pitch-rate</name>
+        <format>dP=%.6f</format>
+        <type>float</type>
+        <node>/fdm/jsbsim/velocities/q-aero-rad_sec</node>
+      </chunk>  
+
+      <chunk>
+        <name>yaw-rate</name>
+        <format>dY=%.6f</format>
+        <type>float</type>
+        <node>/fdm/jsbsim/velocities/r-aero-rad_sec</node>
+      </chunk>  
+      
+      <chunk>
+        <name>x-accel</name>
+        <format>ax=%.6f</format>
+        <type>float</type>
+        <node>/accelerations/pilot/x-accel-fps_sec</node>
+      </chunk>            
+
+      <chunk>
+        <name>y-accel</name>
+        <format>ay=%.6f</format>
+        <type>float</type>
+        <node>/accelerations/pilot/y-accel-fps_sec</node>
+      </chunk>            
+
+      <chunk>
+        <name>z-accel</name>
+        <format>ax=%.6f</format>
+        <type>float</type>
+        <node>/accelerations/pilot/z-accel-fps_sec</node>
+      </chunk>            
+   </output>
+ 
+ </generic>
+ </PropertyList>
