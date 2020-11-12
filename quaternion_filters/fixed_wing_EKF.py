@@ -1,7 +1,7 @@
 
 import numpy as np
 from numpy import sqrt
-from quaternion import Quaternion
+from .quaternion import Quaternion
 import time
 from .filter_log import DataLog
 
