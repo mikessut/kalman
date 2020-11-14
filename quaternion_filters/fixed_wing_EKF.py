@@ -18,16 +18,15 @@ class FixedWingEKF:
         self.q = np.array([1.0, 0, 0, 0], dtype=float)
         self.a = np.array([0.0, 0, G], dtype=float)
         self.w = np.array([0.0, 0, 0], dtype=float)
-        self.tas = 0
         self.alt = 0  # not a state, just passing through for display
 
-        self.P = np.zeros((11, 11))
+        self.P = np.zeros((10, 10))
 
         self.P[0, 0] = .3**2  # varies from ~.7 to 1.0
         # ~ 10 deg error in pitch/roll ~ sin(10/2)
         self.P[1, 1] = (.1**2)
         self.P[2, 2] = (.1 ** 2)
-        self.P[3, 3] = 1  # 180 deg error for heading
+        self.P[3, 3] = 100  # 180 deg error for heading
 
         # Accel init error
         # use 2 deg error => sin(2deg) = .03
@@ -40,12 +39,10 @@ class FixedWingEKF:
         aerr_z = (.2*G)**2 / 1
         werr_x = (10*np.pi/180)**2 / 1  # 10 deg / sec
         werr_y = (10*np.pi/180)**2 / 1  # 10 deg / sec
-        werr_z = (1*np.pi/180)**2 / 1   # 10 deg / sec
-        tas_err = (1*KTS2MS)**2 / 1  # () / 5  # 80 knots in 5 seconds
+        werr_z = (.1*np.pi/180)**2 / 1   # 10 deg / sec
         self.Q = np.diag(np.hstack([qerr*np.ones((4,)),
                                     aerr_x, aerr_y, aerr_z,
-                                    werr_x, werr_y, werr_z,
-                                    tas_err]))
+                                    werr_x, werr_y, werr_z]))
 
         accel_err = 1.5
         self.Raccel = np.diag(accel_err*np.ones((3,)))
@@ -55,14 +52,12 @@ class FixedWingEKF:
         mag_err = .01
         self.Rmag = np.diag(mag_err * np.ones((3,)))
 
-        self.Rtas = (10*KTS2MS)**2
-
         self.last_update = time.time()
         self.t0 = time.time()
         self.log = DataLog()
 
     def state_vec(self):
-        return np.vstack(np.concatenate([self.q, self.a, self.w, [self.tas]]))
+        return np.vstack(np.concatenate([self.q, self.a, self.w]))
 
     def set_state_vec(self, x):
         q = Quaternion(*x[:4].flatten())
@@ -70,7 +65,6 @@ class FixedWingEKF:
         self.q = q.as_ndarray()
         self.a = x[4:7].flatten()
         self.w = x[7:10].flatten()
-        self.tas = x[10, 0]
         self.log.set_state(self.state_vec(), self.P)
 
     def predict(self, dt=None):
@@ -80,10 +74,6 @@ class FixedWingEKF:
             self.last_update = time.time()
 
         self.predict_air(dt)
-        # if self.tas > 20*KTS2MS:
-        #     self.predict_air(dt)
-        # else:
-        #     self.predict_gnd(dt)
 
     def predict_air(self, dt):
 
@@ -119,32 +109,13 @@ class FixedWingEKF:
 
         self.log.predict(dt, self.state_vec(), self.P)
 
-    def predict_gnd(self, dt):
-        F = self.calc_F_gnd(dt)
-        self.P = F.dot(self.P).dot(F.T) + self.Q*dt
-
-        # Quaternion prediction
-        q = Quaternion(*self.q)
-        self.q = q * Quaternion(1, *(.5*self.w*dt))
-        self.q.normalize()
-        self.q = self.q.as_ndarray()
-
-        # Accel
-        self.a = (q.inv()*Quaternion.from_vec([0,0,G])*q).as_ndarray()[1:]
-
-        # Gyro prediction is constant
-
-        # TAS prediction
-        # self.tas = self.tas + self.a[0]*dt
-        self.log.predict(dt, self.state_vec(), self.P)
-
     def update_accel(self, accels):
         self.log.accel(accels)
 
         y = accels - self.a
         y = np.vstack(y)
 
-        H = np.zeros((3,11))
+        H = np.zeros((3, 10))
 
         H[0, 4] = 1
         H[1, 5] = 1
@@ -153,7 +124,7 @@ class FixedWingEKF:
         K = self.P.dot(H.T).dot(np.linalg.inv(S))
         x = self.state_vec() + K.dot(y)
 
-        self.P = (np.eye(11) - K.dot(H)).dot(self.P)
+        self.P = (np.eye(10) - K.dot(H)).dot(self.P)
         self.set_state_vec(x)
 
     def update_gyro(self, gyros):
@@ -161,7 +132,7 @@ class FixedWingEKF:
         y = gyros - self.w
         y = np.vstack(y)
 
-        H = np.zeros((3, 11))
+        H = np.zeros((3, 10))
         H[0, 7] = 1
         H[1, 8] = 1
         H[2, 9] = 1
@@ -170,7 +141,7 @@ class FixedWingEKF:
         K = self.P.dot(H.T).dot(np.linalg.inv(S))
         x = self.state_vec() + K.dot(y)
 
-        self.P = (np.eye(11) - K.dot(H)).dot(self.P)
+        self.P = (np.eye(10) - K.dot(H)).dot(self.P)
         self.set_state_vec(x)
 
     def update_mag(self, mags):
@@ -191,7 +162,7 @@ class FixedWingEKF:
         K = self.P.dot(H.T).dot(np.linalg.inv(S))
         x = self.state_vec() + K.dot(y)
 
-        self.P = (np.eye(11) - K.dot(H)).dot(self.P)
+        self.P = (np.eye(10) - K.dot(H)).dot(self.P)
         self.set_state_vec(x)
 
     def update_bearing(self, bearing):
@@ -218,18 +189,6 @@ class FixedWingEKF:
         self.P = (np.eye(11) - K.dot(H)).dot(self.P)
         self.set_state_vec(x)
 
-    def update_tas(self, tas):
-        self.log.tas(tas)
-        y = np.array([[tas - self.tas],])
-        H = np.zeros((1,11))
-        H[0, 10] = 1
-        S = H.dot(self.P).dot(H.T) + self.Rtas
-        K = self.P.dot(H.T).dot(np.linalg.inv(S))
-        x = self.state_vec() + K.dot(y)
-
-        self.P = (np.eye(11) - K.dot(H)).dot(self.P)
-        self.set_state_vec(x)
-
     def quaternion(self):
         return Quaternion(*self.q)
 
@@ -239,7 +198,7 @@ class FixedWingEKF:
 
     def calc_mag_H(self):
         q0, q1, q2, q3 = self.q
-        H = np.zeros((3,11))
+        H = np.zeros((3,10))
         H[0, 0] = -2.0*q0**3 - 2.0*q0*q1**2 + 2.0*q0*q2**2 + 2.0*q0*q3**2 + 2.0*q0
         H[0, 1] = -2.0*q0**2*q1 - 2.0*q1**3 + 2.0*q1*q2**2 + 2.0*q1*q3**2 + 2.0*q1
         H[0, 2] = -2.0*q0**2*q2 - 2.0*q1**2*q2 + 2.0*q2**3 + 2.0*q2*q3**2 - 2.0*q2
@@ -313,8 +272,7 @@ class FixedWingEKF:
         """
         q0, q1, q2, q3 = self.q
         wx, wy, wz = self.w
-        tas = self.tas
-        F = np.zeros((11, 11))
+        F = np.zeros((10, 10))
         F[0, 0] = 1
         F[0, 1] = -dt*wx/2
         F[0, 2] = -dt*wy/2
@@ -362,7 +320,6 @@ class FixedWingEKF:
         F[7, 7] = 1
         F[8, 8] = 1
         F[9, 9] = 1
-        F[10, 10] = 1
         return F
 
     def calc_F_air_body_rotation_rate(self, dt):
