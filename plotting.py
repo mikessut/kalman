@@ -21,9 +21,9 @@ class Plotter(pyqtgraph.GraphicsLayoutWidget):
         win = pg.GraphicsWindow(title="Kalman Filter Scope") # creates a window
         self.win = win
         self.nplots = 2
-        self.ncurves = 4
-        self.curves2plots = [0, 0, 1, 1]
-        names = ['true turn rate', 'kf turn rate', 'w2 P', 'q3 P']
+        self.ncurves = 6
+        self.curves2plots = [0, 0, 1, 1, 1, 1]
+        names = ['true turn rate', 'kf turn rate', 'q0 P', 'q1 P', 'q2 P', 'q3 P']
 
         self.Xm = []
         self.curve = []

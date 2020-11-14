@@ -2,7 +2,6 @@
 #include <iostream>
 #include <fstream>
 #include "kalman.h"
-#include "dcm.h"
 #include "pressure.h"
 #include <Eigen/Core>
 
@@ -25,10 +24,7 @@ int main() {
   printf("Alt: %.0f; IAS: %.1f; TAS: %.1f", altitude, ias, tas);
   return 0;
   Kalman k;
-  k.x(NSTATES-2,0) = 3.89e-01;
-  k.x(NSTATES-1,0) = 9.06e-01;
-  k.x(8,0) = -1.0821426;
-
+ 
   ifstream ifs("../output.txt");
   ofstream ofs("test.out");
   float dt, x, y, z;
@@ -62,9 +58,6 @@ int main() {
       ifs >> y;
       ifs >> z;
       k.update_mag(Vector3f(x,y,z));
-    } else if (c == "t") {
-      ifs >> x;
-      k.update_TAS(x);
     }
     ctr++;
   }

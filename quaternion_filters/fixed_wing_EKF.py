@@ -22,11 +22,11 @@ class FixedWingEKF:
 
         self.P = np.zeros((10, 10))
 
-        self.P[0, 0] = .3**2  # varies from ~.7 to 1.0
-        # ~ 10 deg error in pitch/roll ~ sin(10/2)
-        self.P[1, 1] = (.1**2)
-        self.P[2, 2] = (.1 ** 2)
-        self.P[3, 3] = 100  # 180 deg error for heading
+        # self.P[0, 0] = .3**2  # varies from ~.7 to 1.0
+        # # ~ 10 deg error in pitch/roll ~ sin(10/2)
+        # self.P[1, 1] = (.1**2)
+        # self.P[2, 2] = (.1 ** 2)
+        # self.P[3, 3] = 1  # 180 deg error for heading
 
         # Accel init error
         # use 2 deg error => sin(2deg) = .03
@@ -77,9 +77,6 @@ class FixedWingEKF:
 
     def predict_air(self, dt):
 
-        F = self.calc_F_air(dt)
-        self.P = F.dot(self.P).dot(F.T) + self.Q*dt
-
         # Quaternion prediction
         q = Quaternion(*self.q)
         self.q = q * Quaternion(1, *(.5*self.w*dt))
@@ -106,6 +103,9 @@ class FixedWingEKF:
 
         # TAS prediction
         #self.tas = self.tas + self.a[0]*dt
+
+        F = self.calc_F_air(dt)
+        self.P = F.dot(self.P).dot(F.T) + self.Q*dt
 
         self.log.predict(dt, self.state_vec(), self.P)
 
@@ -191,6 +191,19 @@ class FixedWingEKF:
 
     def quaternion(self):
         return Quaternion(*self.q)
+
+    def eulers(self):
+        a, b, c, d = self.q
+        phi = np.arctan2(2*(a*b + c*d),
+                            1-2*(b**2 + c**2))
+        theta = np.arcsin(2*(a*c - d*b))
+        psi = np.arctan2(2*(a*d+b*c),
+                            1-2*(c**2+d**2))
+        return np.array([phi, theta, psi])
+
+    def turn_rate(self):
+        q = self.quaternion()
+        return (q*Quaternion.from_vec(self.w)*q.inv()).as_ndarray()[3]
 
     def __repr__(self):
         euler_angles = self.quaternion().euler_angles()*180/np.pi

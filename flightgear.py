@@ -64,6 +64,8 @@ def synthetic_mag(q, inclination, magnitude):
 def flightgear_loop(plot_q):
     t = time.time()
     kf = FixedWingEKF()
+    #q = quaternion.from_rotation_vector(np.array([0, 0, 1])*-170*np.pi/180)
+    #kf.q = quaternion.as_float_array(q)
 
     while True:
         data, addr = client.recvfrom(1024)
@@ -101,9 +103,9 @@ def flightgear_loop(plot_q):
         #print("true head", head)
         kf.update_mag(m)
 
-        q = quaternion.from_float_array(kf.state_vec().flatten()[:4])
+        #q = kf.quaternion()
         
-        es = eulers(q) * 180 / np.pi
+        es = kf.eulers() * 180 / np.pi
         #print(es)
         #print(kf.tas / KTS2MS)  
         roll, pitch, head = es
@@ -119,12 +121,17 @@ def flightgear_loop(plot_q):
         netfix_client.writeValue("IAS", airspeed)
 
         turn_rate0 = -quaternion.as_float_array(q*np.quaternion(0, *w)*q.inverse())[3]*180/np.pi 
-        turn_rate = -quaternion.as_float_array(q*np.quaternion(0, *kf.w)*q.inverse())[3]*180/np.pi
+        turn_rate = -kf.turn_rate()*180/np.pi
 
-        plot_q.put(np.array([turn_rate0, turn_rate, kf.P[6, 6]*0, kf.P[3, 3]]))
+        plot_q.put(np.array([turn_rate0, turn_rate, 
+                             kf.P[0, 0],
+                             kf.P[1, 1],
+                             kf.P[2, 2],
+                             kf.P[3, 3]]))
         netfix_client.writeValue("ROT", turn_rate)
         netfix_client.writeValue("ALAT", -kf.a[1] / G_MS2)
         netfix_client.writeValue("ALT", altitude)
+        #print(kf.P)
 
 
 if __name__ == '__main__':
