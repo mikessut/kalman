@@ -1,6 +1,6 @@
 
 import numpy as np
-from numpy import arctan2, arcsin, sqrt
+from numpy import arctan2, arcsin, sqrt, sin, cos
 try:
     from scipy.optimize import minimize
 except ImportError:
@@ -46,8 +46,8 @@ class Quaternion:
         :return:
         """
         axis /= np.linalg.norm(axis)
-        axis_sin = axis * np.sin(angle/2)
-        return Quaternion(np.cos(angle/2), axis_sin[0], axis_sin[1], axis_sin[2])
+        axis_sin = axis * sin(angle/2)
+        return Quaternion(cos(angle/2), axis_sin[0], axis_sin[1], axis_sin[2])
 
     @staticmethod
     def from_vec(pt: np.ndarray):
