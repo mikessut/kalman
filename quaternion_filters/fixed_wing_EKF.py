@@ -51,7 +51,7 @@ class FixedWingEKF:
         self.Rgyro = np.diag(gyro_err * np.ones((3,)))
 
         mag_err = .01
-        self.Rmag = np.diag(mag_err * np.ones((3,)))
+        self.Rmag = np.diag(mag_err * np.ones((2,)))
 
         self.last_update = time.time()
         self.t0 = time.time()
@@ -143,6 +143,33 @@ class FixedWingEKF:
         """
         self.log.mag(mags)
         q = Quaternion(*self.q)
+        heading = q.euler_angles()[2]
+        # mag_inertial = (q * Quaternion.from_vec(mags) * q.inv()).as_ndarray()[1:]
+        # mag_inertial[2] = 0.0
+        # mag_inertial /= np.linalg.norm(mag_inertial)
+        
+        sensor_heading = mags[:2]
+        sensor_heading /= np.linalg.norm(sensor_heading)
+        sensor_heading[1] *= -1
+
+        h = np.vstack([np.cos(heading), np.sin(heading)])
+        y = np.vstack(sensor_heading) - h
+        #print("sensor_head, state_heading", sensor_heading, h.flatten() )
+        
+        H = self.calc_mag_H()
+        S = H.dot(self.P).dot(H.T) + self.Rmag
+        K = self.P.dot(H.T).dot(np.linalg.inv(S))
+        x = self.state_vec() + K.dot(y)
+
+        self.P = (np.eye(10) - K.dot(H)).dot(self.P)
+        self.set_state_vec(x)        
+
+    def update_mag_old(self, mags):
+        """
+        See derive.py for discussion of how this works.
+        """
+        self.log.mag(mags)
+        q = Quaternion(*self.q)
         mag_inertial = (q * Quaternion.from_vec(mags) * q.inv()).as_ndarray()[1:]
         mag_inertial[2] = 0.0
         mag_inertial /= np.linalg.norm(mag_inertial)
@@ -150,7 +177,6 @@ class FixedWingEKF:
         h = (q.inv() * Quaternion.from_vec(np.array([1.0, 0, 0])) * q).as_ndarray()[1:]
         y = mag_body - h
         print("mag body", mag_body, h)
-        y = np.vstack(y)
         #print("y", y)
         H = self.calc_mag_H()
         S = H.dot(self.P).dot(H.T) + self.Rmag
@@ -205,6 +231,19 @@ class FixedWingEKF:
         return f"{time.time()-self.t0:5.0f}{euler_angles[0]:7.1f}{euler_angles[1]:7.1f}{euler_angles[2]:7.1f} {self.w[0]*180/np.pi:6.2f}{self.w[1]*180/np.pi:6.2f}{self.w[2]*180/np.pi:6.2f} {self.tas/KTS2MS:.1f} {self.a[0]/G:6.2f}{self.a[1]/G:6.2f}{self.a[2]/G:6.2f}"
 
     def calc_mag_H(self):
+        q0, q1, q2, q3 = self.q
+        H = np.zeros((2,10))
+        H[0, 0] = -2*q3*(2*q0*q3 + 2*q1*q2)*(-2*q2**2 - 2*q3**2 + 1)/((2*q0*q3 + 2*q1*q2)**2 + (-2*q2**2 - 2*q3**2 + 1)**2)**(3/2)
+        H[0, 1] = -2*q2*(2*q0*q3 + 2*q1*q2)*(-2*q2**2 - 2*q3**2 + 1)/((2*q0*q3 + 2*q1*q2)**2 + (-2*q2**2 - 2*q3**2 + 1)**2)**(3/2)
+        H[0, 2] = -4*q2/sqrt((2*q0*q3 + 2*q1*q2)**2 + (-2*q2**2 - 2*q3**2 + 1)**2) + (-2*q1*(2*q0*q3 + 2*q1*q2) + 4*q2*(-2*q2**2 - 2*q3**2 + 1))*(-2*q2**2 - 2*q3**2 + 1)/((2*q0*q3 + 2*q1*q2)**2 + (-2*q2**2 - 2*q3**2 + 1)**2)**(3/2)
+        H[0, 3] = -4*q3/sqrt((2*q0*q3 + 2*q1*q2)**2 + (-2*q2**2 - 2*q3**2 + 1)**2) + (-2*q0*(2*q0*q3 + 2*q1*q2) + 4*q3*(-2*q2**2 - 2*q3**2 + 1))*(-2*q2**2 - 2*q3**2 + 1)/((2*q0*q3 + 2*q1*q2)**2 + (-2*q2**2 - 2*q3**2 + 1)**2)**(3/2)
+        H[1, 0] = -2*q3*(2*q0*q3 + 2*q1*q2)**2/((2*q0*q3 + 2*q1*q2)**2 + (-2*q2**2 - 2*q3**2 + 1)**2)**(3/2) + 2*q3/sqrt((2*q0*q3 + 2*q1*q2)**2 + (-2*q2**2 - 2*q3**2 + 1)**2)
+        H[1, 1] = -2*q2*(2*q0*q3 + 2*q1*q2)**2/((2*q0*q3 + 2*q1*q2)**2 + (-2*q2**2 - 2*q3**2 + 1)**2)**(3/2) + 2*q2/sqrt((2*q0*q3 + 2*q1*q2)**2 + (-2*q2**2 - 2*q3**2 + 1)**2)
+        H[1, 2] = 2*q1/sqrt((2*q0*q3 + 2*q1*q2)**2 + (-2*q2**2 - 2*q3**2 + 1)**2) + (2*q0*q3 + 2*q1*q2)*(-2*q1*(2*q0*q3 + 2*q1*q2) + 4*q2*(-2*q2**2 - 2*q3**2 + 1))/((2*q0*q3 + 2*q1*q2)**2 + (-2*q2**2 - 2*q3**2 + 1)**2)**(3/2)
+        H[1, 3] = 2*q0/sqrt((2*q0*q3 + 2*q1*q2)**2 + (-2*q2**2 - 2*q3**2 + 1)**2) + (2*q0*q3 + 2*q1*q2)*(-2*q0*(2*q0*q3 + 2*q1*q2) + 4*q3*(-2*q2**2 - 2*q3**2 + 1))/((2*q0*q3 + 2*q1*q2)**2 + (-2*q2**2 - 2*q3**2 + 1)**2)**(3/2)
+        return H
+
+    def calc_mag_H_old(self):
         q0, q1, q2, q3 = self.q
         H = np.zeros((3,10))
         H[0, 0] = -2.0*q0**3 - 2.0*q0*q1**2 + 2.0*q0*q2**2 + 2.0*q0*q3**2 + 2.0*q0

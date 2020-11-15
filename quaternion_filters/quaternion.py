@@ -98,6 +98,7 @@ class Quaternion:
 
     def euler_angles(self):
         """
+        Returns roll, pitch, heading
         https://en.wikipedia.org/wiki/Conversion_between_quaternions_and_Euler_angles
         phi: bank about x axis
         theta: rotation about y

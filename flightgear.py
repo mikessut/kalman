@@ -65,9 +65,9 @@ def synthetic_mag(q, inclination, magnitude):
 
 def flightgear_loop(plot_q):
     t = time.time()
-    #kf = FixedWingEKF()
-    kf = FixedWingEKFEulers()
-    kf.es[2] = 212.7*np.pi/180
+    kf = FixedWingEKF()
+    #kf = FixedWingEKFEulers()
+    #kf.es[2] = 180*np.pi/180
     #q = quaternion.from_rotation_vector(np.array([0, 0, 1])*180*np.pi/180)
     #kf.q = quaternion.as_float_array(q)
 
