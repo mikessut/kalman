@@ -2,7 +2,7 @@
 
 """
 
-fgcommand("add-io-channel", {"config": "generic,socket,out,10,localhost,6789,udp,fixgw", "name": "test"});
+fgcommand("add-io-channel", {"config": "generic,socket,out,10,localhost,6789,udp,fgfs_fixgw", "name": "test"});
 """
 
 import socket
@@ -14,6 +14,10 @@ import time
 from quaternion_filters.fixed_wing_EKF import FixedWingEKF, KTS2MS
 import numpy as np
 import quaternion
+import plotting
+import queue
+import threading
+from pyqtgraph.Qt import QtGui 
 
 netfix_client = netfix.Client('127.0.0.1', 3490)
 netfix_client.connect()
@@ -44,10 +48,24 @@ def normalize_heading(val_deg):
         return val_deg
 
 
-if __name__ == '__main__':
+def euler_to_quaternion(roll, pitch, head):
+    q = np.quaternion(1, 0, 0, 0)
+    q = q * quaternion.from_rotation_vector(np.array([0, 0, 1.0])*-head)
+    q = q * quaternion.from_rotation_vector(np.array([0, 1.0, 0])*-pitch)
+    q = q * quaternion.from_rotation_vector(np.array([1.0, 0, 0])*roll)
+    return q
+
+
+def synthetic_mag(q, inclination, magnitude):
+    m = np.array([np.cos(inclination), 0, -np.sin(inclination)])*magnitude
+    return quaternion.as_float_array(q.inverse() * np.quaternion(0, *m) * q)[1:]
+
+
+def flightgear_loop(plot_q):
     t = time.time()
     kf = FixedWingEKF()
-
+    #q = quaternion.from_rotation_vector(np.array([0, 0, 1])*-170*np.pi/180)
+    #kf.q = quaternion.as_float_array(q)
 
     while True:
         data, addr = client.recvfrom(1024)
@@ -60,34 +78,34 @@ if __name__ == '__main__':
         ax /= G_FTS2
         ay /= G_FTS2
         az /= G_FTS2
+        a = np.array([ax, ay, az]) * G_MS2
+        w = np.array([rollrate, -pitchrate, -yawrate])
+        qtrue = euler_to_quaternion(roll*np.pi/180, pitch*np.pi/180, head*np.pi/180)
+        m = synthetic_mag(qtrue, 60*np.pi/180, 60)
 
-        #print(airspeed, head)
-        #print(f"pitch, roll, yaw: {pitchrate:.1f} {rollrate:.1f} {yawrate:.1f} ")
-        #print(f"accels:           {ax:.2f} {ay:.2f} {az:.2f}")
-        #print(ros.is_connected)
-        #ros_topic.publish(roslibpy.Message({'data': 'test'}))
         dt = time.time() - t
         t = time.time()
         kf.predict(dt)
 
-        a = np.array([ax, ay, az]) * G_MS2
-
+        # Accel update
         # Rotate a into z down coordinate frame
         q = quaternion.from_rotation_vector(np.array([1, 0, 0]) * np.pi)
         a = quaternion.as_float_array(q * np.quaternion(0, *a) * q.inverse())[1:]
         #print((a / G_MS2).round(2))
-        
         kf.update_accel(a)
 
-        w = np.array([rollrate, -pitchrate, -yawrate])
-        print((w * 180/np.pi).round(1))
+        # Gyro update        
+        #print((w * 180/np.pi).round(1))
         kf.update_gyro(w)
 
-        kf.update_tas(airspeed * KTS2MS)
+        # Magnetometer update
+        #print("mag", m.round(1))
+        #print("true head", head)
+        kf.update_mag(m)
 
-        q = quaternion.from_float_array(kf.state_vec().flatten()[:4])
+        #q = kf.quaternion()
         
-        es = eulers(q) * 180 / np.pi
+        es = kf.eulers() * 180 / np.pi
         #print(es)
         #print(kf.tas / KTS2MS)  
         roll, pitch, head = es
@@ -100,10 +118,28 @@ if __name__ == '__main__':
         netfix_client.writeValue("PITCH", -pitch)
         netfix_client.writeValue("ROLL", roll)
         netfix_client.writeValue("HEAD", head)
-        #netfix_client.writeValue("IAS", airspeed)
-        netfix_client.writeValue("IAS", kf.tas / KTS2MS)
-        netfix_client.writeValue("ROT", -quaternion.as_float_array(q*np.quaternion(0, *kf.w)*q.inverse())[3]*180/np.pi)
+        netfix_client.writeValue("IAS", airspeed)
+
+        turn_rate0 = -quaternion.as_float_array(q*np.quaternion(0, *w)*q.inverse())[3]*180/np.pi 
+        turn_rate = -kf.turn_rate()*180/np.pi
+
+        plot_q.put(np.array([turn_rate0, turn_rate, 
+                             kf.P[0, 0],
+                             kf.P[1, 1],
+                             kf.P[2, 2],
+                             kf.P[3, 3]]))
+        netfix_client.writeValue("ROT", turn_rate)
         netfix_client.writeValue("ALAT", -kf.a[1] / G_MS2)
         netfix_client.writeValue("ALT", altitude)
+        #print(kf.P)
 
 
+if __name__ == '__main__':
+    q = queue.Queue()
+    thread = threading.Thread(target=flightgear_loop, args=(q,))
+    thread.start()
+    p = plotting.Plotter(1000, q)  
+    #p.app.exec() # This plots from qt start
+    QtGui.QApplication.instance().exec_()
+
+    

@@ -3,7 +3,7 @@ CXX := g++
 CC := g++
 # -g is for debug with gdb
 # CPPFLAGS := -I c:\trash\eigen -std=c++17
-CPPFLAGS := -I c:\work\eigen
+CPPFLAGS := -I/usr/include/eigen3
 
 OBJS = main.o kalman.o dcm.o pressure.o
 
@@ -20,6 +20,10 @@ kalman.o: kalman.cpp kalman.h
 dcm.o: dcm.h dcm.cpp
 
 pressure.o: pressure.h pressure.c
+
+scratch.o: scratch.cpp
+
+scratch: scratch.o
 
 
 clean:
