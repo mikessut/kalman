@@ -12,7 +12,7 @@ import struct
 #import fixgw.plugin as plugin
 import fixgw.netfix as netfix
 import time
-#from quaternion_filters.fixed_wing_EKF import FixedWingEKF, KTS2MS
+from quaternion_filters.fixed_wing_EKF import FixedWingEKF, KTS2MS
 from quaternion_filters.fixed_wing_EKF_eulers import FixedWingEKFEulers, KTS2MS
 import numpy as np
 import quaternion
@@ -65,9 +65,10 @@ def synthetic_mag(q, inclination, magnitude):
 
 def flightgear_loop(plot_q):
     t = time.time()
+    #kf = FixedWingEKF()
     kf = FixedWingEKFEulers()
-    kf.es[2] = 180*np.pi/180
-    #q = quaternion.from_rotation_vector(np.array([0, 0, 1])*-170*np.pi/180)
+    kf.es[2] = 212.7*np.pi/180
+    #q = quaternion.from_rotation_vector(np.array([0, 0, 1])*180*np.pi/180)
     #kf.q = quaternion.as_float_array(q)
 
     while True:
@@ -137,7 +138,9 @@ def flightgear_loop(plot_q):
         #                     kf.P[1, 1],
         #                     kf.P[2, 2]]))
         #                     #kf.P[3, 3]]))
-        plot_q.put(np.array([kf.P[0, 0], kf.P[1, 1], kf.P[2,2]]))
+        #plot_q.put(np.array([kf.P[0, 0], kf.P[1, 1], kf.P[2,2], kf.P[3,3]]))
+        #plot_q.put(np.array([kf.a[0], a[0], kf.a[1], a[1]]))
+        plot_q.put(np.array([kf.w[0], w[0], kf.w[1], w[1]]))
         netfix_client.writeValue("ROT", turn_rate)
         netfix_client.writeValue("ALAT", kf.a[1] / G_MS2)
         netfix_client.writeValue("ALT", altitude)
@@ -148,7 +151,10 @@ if __name__ == '__main__':
     q = queue.Queue()
     thread = threading.Thread(target=flightgear_loop, args=(q,))
     thread.start()
-    p = plotting.Plotter(1000, q, ['Proll', 'Ppitch', 'Phead'])
+    #p = plotting.Plotter(1000, q, ['Proll', 'Ppitch', 'Phead'])
+    #p = plotting.Plotter(1000, q, ['Pq0', 'Pq1', 'Pq2', 'Pq3'])
+    #p = plotting.Plotter(1000, q, ['kf.ax', 'ax', 'kf.ay', 'ay'])
+    p = plotting.Plotter(1000, q, ['kf.wx', 'wx', 'kf.wy', 'wy'])
     #p.app.exec() # This plots from qt start
     QtGui.QApplication.instance().exec_()
 

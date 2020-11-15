@@ -23,7 +23,7 @@ class Plotter(pyqtgraph.GraphicsLayoutWidget):
         self.win = win
         self.nplots = 1
         self.ncurves = len(names)
-        self.curves2plots = [0, 0, 0] # , 0, 0, 0, 0, 1, 1, 1, 1, 1, 1]
+        self.curves2plots = [0, 0, 0, 0] # , 0, 0, 0, 0, 1, 1, 1, 1, 1, 1]
         #names = ['true turn rate', 'kf turn rate', 'q0 P', 'q1 P', 'q2 P', 'q3 P']
 
         self.Xm = []
