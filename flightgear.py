@@ -2,7 +2,8 @@
 
 """
 
-fgcommand("add-io-channel", {"config": "generic,socket,out,10,localhost,6789,udp,fgfs_fixgw", "name": "test"});
+fgcommand("add-io-channel", {"config": "generic,socket,out,10,192.168.2.103,6789,udp,fgfs_fixgw", "name": "test"});
+print(getprop("/orientation/heading-deg"));
 """
 
 import socket
@@ -11,7 +12,8 @@ import struct
 #import fixgw.plugin as plugin
 import fixgw.netfix as netfix
 import time
-from quaternion_filters.fixed_wing_EKF import FixedWingEKF, KTS2MS
+#from quaternion_filters.fixed_wing_EKF import FixedWingEKF, KTS2MS
+from quaternion_filters.fixed_wing_EKF_eulers import FixedWingEKFEulers, KTS2MS
 import numpy as np
 import quaternion
 import plotting
@@ -50,20 +52,21 @@ def normalize_heading(val_deg):
 
 def euler_to_quaternion(roll, pitch, head):
     q = np.quaternion(1, 0, 0, 0)
-    q = q * quaternion.from_rotation_vector(np.array([0, 0, 1.0])*-head)
-    q = q * quaternion.from_rotation_vector(np.array([0, 1.0, 0])*-pitch)
+    q = q * quaternion.from_rotation_vector(np.array([0, 0, 1.0])*head)
+    q = q * quaternion.from_rotation_vector(np.array([0, 1.0, 0])*pitch)
     q = q * quaternion.from_rotation_vector(np.array([1.0, 0, 0])*roll)
     return q
 
 
 def synthetic_mag(q, inclination, magnitude):
-    m = np.array([np.cos(inclination), 0, -np.sin(inclination)])*magnitude
+    m = np.array([np.cos(inclination), 0, np.sin(inclination)])*magnitude
     return quaternion.as_float_array(q.inverse() * np.quaternion(0, *m) * q)[1:]
 
 
 def flightgear_loop(plot_q):
     t = time.time()
-    kf = FixedWingEKF()
+    kf = FixedWingEKFEulers()
+    kf.es[2] = 180*np.pi/180
     #q = quaternion.from_rotation_vector(np.array([0, 0, 1])*-170*np.pi/180)
     #kf.q = quaternion.as_float_array(q)
 
@@ -79,9 +82,15 @@ def flightgear_loop(plot_q):
         ay /= G_FTS2
         az /= G_FTS2
         a = np.array([ax, ay, az]) * G_MS2
-        w = np.array([rollrate, -pitchrate, -yawrate])
+        #w = np.array([rollrate, -pitchrate, -yawrate])
+        w = np.array([rollrate, pitchrate, yawrate])
         qtrue = euler_to_quaternion(roll*np.pi/180, pitch*np.pi/180, head*np.pi/180)
+        #print("head", head)
+                
         m = synthetic_mag(qtrue, 60*np.pi/180, 60)
+        #print("m", m)
+        #print("m inertial", qtrue*np.quaternion(0, *m)*qtrue.inverse())
+        #import pdb; pdb.set_trace()
 
         dt = time.time() - t
         t = time.time()
@@ -89,8 +98,8 @@ def flightgear_loop(plot_q):
 
         # Accel update
         # Rotate a into z down coordinate frame
-        q = quaternion.from_rotation_vector(np.array([1, 0, 0]) * np.pi)
-        a = quaternion.as_float_array(q * np.quaternion(0, *a) * q.inverse())[1:]
+        #q = quaternion.from_rotation_vector(np.array([1, 0, 0]) * np.pi)
+        #a = quaternion.as_float_array(q * np.quaternion(0, *a) * q.inverse())[1:]
         #print((a / G_MS2).round(2))
         kf.update_accel(a)
 
@@ -109,27 +118,28 @@ def flightgear_loop(plot_q):
         #print(es)
         #print(kf.tas / KTS2MS)  
         roll, pitch, head = es
-        head = normalize_heading(-head)
+        head = normalize_heading(head)
         #print(head)
 
         #print(np.round(kf.tas / KTS2MS, 1), ((a - kf.a) / G_MS2).round(2))
         #print(np.round(kf.tas / KTS2MS - airspeed, 1), ((w - kf.w) * 180/np.pi).round(2))
 
-        netfix_client.writeValue("PITCH", -pitch)
+        netfix_client.writeValue("PITCH", pitch)
         netfix_client.writeValue("ROLL", roll)
         netfix_client.writeValue("HEAD", head)
         netfix_client.writeValue("IAS", airspeed)
 
-        turn_rate0 = -quaternion.as_float_array(q*np.quaternion(0, *w)*q.inverse())[3]*180/np.pi 
-        turn_rate = -kf.turn_rate()*180/np.pi
+        #turn_rate0 = -quaternion.as_float_array(q*np.quaternion(0, *w)*q.inverse())[3]*180/np.pi 
+        turn_rate = kf.turn_rate()*180/np.pi
 
-        plot_q.put(np.array([turn_rate0, turn_rate, 
-                             kf.P[0, 0],
-                             kf.P[1, 1],
-                             kf.P[2, 2],
-                             kf.P[3, 3]]))
+        #plot_q.put(np.array([0, turn_rate, 
+        #                     kf.P[0, 0],
+        #                     kf.P[1, 1],
+        #                     kf.P[2, 2]]))
+        #                     #kf.P[3, 3]]))
+        plot_q.put(np.array([kf.P[0, 0], kf.P[1, 1], kf.P[2,2]]))
         netfix_client.writeValue("ROT", turn_rate)
-        netfix_client.writeValue("ALAT", -kf.a[1] / G_MS2)
+        netfix_client.writeValue("ALAT", kf.a[1] / G_MS2)
         netfix_client.writeValue("ALT", altitude)
         #print(kf.P)
 
@@ -138,7 +148,7 @@ if __name__ == '__main__':
     q = queue.Queue()
     thread = threading.Thread(target=flightgear_loop, args=(q,))
     thread.start()
-    p = plotting.Plotter(1000, q)  
+    p = plotting.Plotter(1000, q, ['Proll', 'Ppitch', 'Phead'])
     #p.app.exec() # This plots from qt start
     QtGui.QApplication.instance().exec_()
 

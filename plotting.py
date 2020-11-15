@@ -6,13 +6,14 @@ import pyqtgraph as pg
 import queue
 import threading
 import time
+import itertools
 
 
 class Plotter(pyqtgraph.GraphicsLayoutWidget):
 
     data_acquired = pyqtSignal(np.ndarray)
 
-    def __init__(self, width, q):
+    def __init__(self, width, q, names):
         super().__init__()
         ### START QtApp #####
         #self.app = QtGui.QApplication([])            # you MUST do this once (initialize things)
@@ -20,22 +21,22 @@ class Plotter(pyqtgraph.GraphicsLayoutWidget):
 
         win = pg.GraphicsWindow(title="Kalman Filter Scope") # creates a window
         self.win = win
-        self.nplots = 2
-        self.ncurves = 6
-        self.curves2plots = [0, 0, 1, 1, 1, 1]
-        names = ['true turn rate', 'kf turn rate', 'q0 P', 'q1 P', 'q2 P', 'q3 P']
+        self.nplots = 1
+        self.ncurves = len(names)
+        self.curves2plots = [0, 0, 0] # , 0, 0, 0, 0, 1, 1, 1, 1, 1, 1]
+        #names = ['true turn rate', 'kf turn rate', 'q0 P', 'q1 P', 'q2 P', 'q3 P']
 
         self.Xm = []
         self.curve = []
         windowWidth = width                       # width of the window displaying the curve
-        colors = [{'color': x} for x in 'rgbcmykw']
+        colors = itertools.cycle([{'color': x} for x in 'rgbcmykw'])
         plots = []
         for _ in range(self.nplots):
             plots.append(win.addPlot())  #  Creates PlotItem
             plots[-1].addLegend()
 
         for nc in range(self.ncurves):            
-            self.curve.append(plots[self.curves2plots[nc]].plot(pen=colors[nc], name=names[nc]))
+            self.curve.append(plots[self.curves2plots[nc]].plot(pen=next(colors), name=names[nc]))
             self.Xm.append(np.linspace(0, 0, windowWidth))
 
         self.ptr = -windowWidth                      # set first x position
