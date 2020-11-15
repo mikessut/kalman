@@ -139,8 +139,8 @@ def flightgear_loop(plot_q):
         #                     kf.P[2, 2]]))
         #                     #kf.P[3, 3]]))
         #plot_q.put(np.array([kf.P[0, 0], kf.P[1, 1], kf.P[2,2], kf.P[3,3]]))
-        #plot_q.put(np.array([kf.a[0], a[0], kf.a[1], a[1]]))
-        plot_q.put(np.array([kf.w[0], w[0], kf.w[1], w[1]]))
+        plot_q.put(np.array([kf.a[0], a[0], kf.a[1], a[1]]))
+        #plot_q.put(np.array([kf.w[0], w[0], kf.w[1], w[1]]))
         netfix_client.writeValue("ROT", turn_rate)
         netfix_client.writeValue("ALAT", kf.a[1] / G_MS2)
         netfix_client.writeValue("ALT", altitude)
@@ -153,8 +153,8 @@ if __name__ == '__main__':
     thread.start()
     #p = plotting.Plotter(1000, q, ['Proll', 'Ppitch', 'Phead'])
     #p = plotting.Plotter(1000, q, ['Pq0', 'Pq1', 'Pq2', 'Pq3'])
-    #p = plotting.Plotter(1000, q, ['kf.ax', 'ax', 'kf.ay', 'ay'])
-    p = plotting.Plotter(1000, q, ['kf.wx', 'wx', 'kf.wy', 'wy'])
+    p = plotting.Plotter(1000, q, ['kf.ax', 'ax', 'kf.ay', 'ay'])
+    #p = plotting.Plotter(1000, q, ['kf.wx', 'wx', 'kf.wy', 'wy'])
     #p.app.exec() # This plots from qt start
     QtGui.QApplication.instance().exec_()
 

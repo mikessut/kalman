@@ -35,12 +35,12 @@ class FixedWingEKF:
 
         qerr = 0
         # Accel model is coordinated turn assumption. How far from this could we be?
-        aerr_x = (.4*G)**2 / 1
-        aerr_y = (.4*G)**2 / 1
-        aerr_z = (.2*G)**2 / 1
+        aerr_x = (.01*G)**2 / 1
+        aerr_y = (.01*G)**2 / 1
+        aerr_z = (.01*G)**2 / 1
         werr_x = (10*np.pi/180)**2 / 1  # 10 deg / sec
         werr_y = (10*np.pi/180)**2 / 1  # 10 deg / sec
-        werr_z = (1*np.pi/180)**2 / 1   # 10 deg / sec
+        werr_z = (2*np.pi/180)**2 / 1   # 10 deg / sec
         self.Q = np.diag(np.hstack([qerr*np.ones((4,)),
                                     aerr_x, aerr_y, aerr_z,
                                     werr_x, werr_y, werr_z]))
@@ -143,12 +143,13 @@ class FixedWingEKF:
         """
         self.log.mag(mags)
         q = Quaternion(*self.q)
-        heading = q.euler_angles()[2]
-        # mag_inertial = (q * Quaternion.from_vec(mags) * q.inv()).as_ndarray()[1:]
-        # mag_inertial[2] = 0.0
-        # mag_inertial /= np.linalg.norm(mag_inertial)
+        roll, pitch, heading = q.euler_angles()
         
-        sensor_heading = mags[:2]
+        # Undo roll and pitch from mag sensor, then calculate heading vector
+        qtmp = Quaternion.axis_angle(np.array([1.0, 0, 0]), roll)*Quaternion.axis_angle(np.array([0, 1.0, 0]), pitch)
+
+        #sensor_heading = mags[:2]
+        sensor_heading = (qtmp * Quaternion.from_vec(mags) * qtmp.inv()).as_ndarray()[1:3]
         sensor_heading /= np.linalg.norm(sensor_heading)
         sensor_heading[1] *= -1
 
