@@ -27,6 +27,18 @@ LIBEXPORT void update_accel(void *ptr, float x, float y, float z) {
 }
 
 
+LIBEXPORT void update_gyro(void *ptr, float x, float y, float z) {
+    Kalman* ref = reinterpret_cast<Kalman*>(ptr);
+    ref->update_gyro(Vector3f(x, y, z));
+}
+
+
+LIBEXPORT void update_mag(void *ptr, float x, float y, float z) {
+    Kalman* ref = reinterpret_cast<Kalman*>(ptr);
+    ref->update_mag(Vector3f(x, y, z));
+}
+
+
 LIBEXPORT void* state_ptr(void *ptr) {
     Kalman* ref = reinterpret_cast<Kalman*>(ptr);
     ref->x.data();

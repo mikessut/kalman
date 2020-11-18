@@ -52,6 +52,9 @@ private:
   float Rgyro = GYRO_MEAS_ERR;
   float Rmag = MAG_MEAS_ERR;
   Matrix<float, NSTATES, NSTATES> calcF(float dt);
+  Matrix<float, 2, NSTATES> calc_mag_H();
+  void q_normalize();
+  
 
 public:
   Matrix <float, NSTATES, 1> x;  // should be private, but public for testing
@@ -73,9 +76,15 @@ public:
   //    ofs << x(i,0) << ",";
   //}
   friend ostream& operator<<(ostream &ofs, const Kalman &k);
+  void printState() {
+    for (int i=0; i < NSTATES; i++) 
+      cout << x(i) << endl;
+  }
 };
 
 ostream& operator<<(ostream &ofs, const Kalman &k);
 
-float roll(Eigen::Quaternion<float> q);
+float q2roll(Eigen::Quaternion<float> q);
+float q2pitch(Eigen::Quaternion<float> q);
+float q2heading(Eigen::Quaternion<float> q);
 #endif

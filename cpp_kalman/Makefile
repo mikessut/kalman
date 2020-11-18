@@ -3,7 +3,7 @@ CXX := g++
 CC := g++
 # -g is for debug with gdb
 # CPPFLAGS := -I c:\trash\eigen -std=c++17
-CPPFLAGS := -I/usr/include/eigen3
+CPPFLAGS := -I/usr/include/eigen3 -g
 
 OBJS = main.o kalman.o dcm.o pressure.o
 
@@ -25,7 +25,13 @@ scratch.o: scratch.cpp
 
 scratch: scratch.o
 
+kf_pic: kalman.cpp
+	$(CXX) $(CPPFLAGS) -c -fpic kalman.cpp -o kalman_pic.o
+
+python: kalman_pic.o
+	$(CXX) $(CPPFLAGS) -c -fpic kalman_python_wrapper.cpp
+	$(CXX) -shared -o libkalman.so kalman_python_wrapper.o kalman_pic.o
 
 clean:
-	del $(OBJS)
-	del kf.exe
+	rm $(OBJS)
+	rm kf

@@ -22,11 +22,19 @@ int main() {
                     &altitude, &ias, &tas);
 
   printf("Alt: %.0f; IAS: %.1f; TAS: %.1f", altitude, ias, tas);
-  return 0;
+  
   Kalman k;
+
+  cout << k << endl;
+
+  k.predict(.01);
+  k.update_accel(Vector3f(.1,0,-9));
+  cout << k << endl;
+  return 0;
  
   ifstream ifs("../output.txt");
   ofstream ofs("test.out");
+  
   float dt, x, y, z;
   string c;
   int ctr = 0;
@@ -61,4 +69,6 @@ int main() {
     }
     ctr++;
   }
+
+  return 0;
 }
