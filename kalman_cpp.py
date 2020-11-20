@@ -12,14 +12,16 @@ class KalmanCpp:
         self.clib = ctypes.CDLL('./cpp_kalman/libkalman.so')
         self.clib.CreateKalmanClass.restype = ctypes.c_voidp
         self.clib.state_ptr.restype = c_float_p
+        self.clib.get_P.restype = ctypes.c_float
         self.ptr = self.clib.CreateKalmanClass()
 
     def print_state(self):
         self.clib.PrintState(ctypes.c_voidp(self.ptr))
 
-    def predict(self, dt):
+    def predict(self, dt, tas):
         self.clib.predict(ctypes.c_voidp(self.ptr), 
-                          ctypes.c_float(dt))
+                          ctypes.c_float(dt),
+                          ctypes.c_float(tas))
 
     def update_accel(self, a):
         self.clib.update_accel(ctypes.c_voidp(self.ptr), 
@@ -46,6 +48,8 @@ class KalmanCpp:
             return self.state_vec()[7:10].flatten()
         elif val == 'q':
             return self.state_vec()[:4].flatten()
+        elif val == 'P':
+            return self.get_P()
     
     def state_vec(self):
         p = self.clib.state_ptr(ctypes.c_voidp(self.ptr)) 
@@ -78,3 +82,10 @@ class KalmanCpp:
         q = Quaternion.axis_angle(np.array([0, 0, 1.]), heading_deg*np.pi/180).as_ndarray()
         for n in range(4):
             p[n] = q[n]
+
+    def get_P(self):
+        P = np.zeros((self.NSTATES, self.NSTATES))
+        for i in range(self.NSTATES):
+            for j in range(self.NSTATES):
+                P[i, j] = self.clib.get_P(ctypes.c_voidp(self.ptr), i, j)
+        return P

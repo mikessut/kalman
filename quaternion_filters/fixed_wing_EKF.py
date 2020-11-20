@@ -17,6 +17,8 @@ FT2M = 0.3048
 
 class FixedWingEKF:
 
+    min_speed = 50 * KTS2MS
+
     def __init__(self):
 
         self.q = np.array([1.0, 0, 0, 0], dtype=float)
@@ -40,9 +42,16 @@ class FixedWingEKF:
         #self.P[4:7, 4:7] = np.diag(np.ones((3,)))*(.03*G)**2
 
         # Accel model is coordinated turn assumption. How far from this could we be?
-        aerr_x = (.01*G)**2 / 1
-        aerr_y = (.1*G)**2 / 1
-        aerr_z = (.01*G)**2 / 1
+        # This set works ok for const w model
+        # aerr_x = (.01*G)**2 / 1
+        # aerr_y = (.1*G)**2 / 1
+        # aerr_z = (.01*G)**2 / 1
+        # werr_x = (10*np.pi/180)**2 / 1  # 10 deg / sec
+        # werr_y = (10*np.pi/180)**2 / 1  # 10 deg / sec
+        # werr_z = (2*np.pi/180)**2 / 1   # 10 deg / sec
+        aerr_x = (.1*G)**2 / 1
+        aerr_y = (.05*G)**2 / 1
+        aerr_z = (.1*G)**2 / 1
         werr_x = (10*np.pi/180)**2 / 1  # 10 deg / sec
         werr_y = (10*np.pi/180)**2 / 1  # 10 deg / sec
         werr_z = (2*np.pi/180)**2 / 1   # 10 deg / sec
@@ -83,7 +92,7 @@ class FixedWingEKF:
         self.a = x[4:7].flatten()
         self.w = x[7:10].flatten()
 
-        #self.force_P_pos_def_sym()
+        self.force_P_pos_def_sym()
 
     def force_P_pos_def_sym(self):
         # Make sure the P is positive definite symmetric -- think that's the right term! :)
@@ -94,7 +103,7 @@ class FixedWingEKF:
         self.P[j, i] = self.P[i, j]
         self.log.set_state(self.state_vec(), self.P)
 
-    def predict(self, dt):
+    def predict(self, dt, tas):
 
         # Quaternion prediction
         q = Quaternion(*self.q)        
@@ -119,10 +128,10 @@ class FixedWingEKF:
         self.q = self.q.as_ndarray()
 
         # Gyro prediction
-        #self.w = (q.inv()*Quaternion.from_vec([0,0,-G/self.tas*np.tan(phi)])*q).as_ndarray()[1:]
+        self.w = (q.inv()*Quaternion.from_vec([0,0,G/max(self.min_speed, tas)*np.tan(phi)])*q).as_ndarray()[1:]
         # If we do nothing here, it is the constant w assumption
 
-        F = self.calc_F_air(dt)
+        F = self.calc_F_turn_rate_predict(dt, tas)
         self.P = F.dot(self.P).dot(F.T) + self.Q*dt
         
         #self.force_P_pos_def_sym()
@@ -304,6 +313,7 @@ class FixedWingEKF:
 
     def calc_F_air(self, dt):
         return self.calc_F_air_const_w(dt)
+        #return self.calc_F_turn_rate_predict(dt)
 
     def calc_F_air_const_w(self, dt):
         """
@@ -483,4 +493,256 @@ class FixedWingEKF:
         F[7, 7] = 1
         F[8, 8] = 1
         F[9, 9] = 1
+        return F
+
+    def calc_F_turn_rate_predict(self, dt, tas):
+        """
+        Jacobian with wpredict: [wx,wy,wz]
+        """
+        q0, q1, q2, q3 = self.q
+        wx, wy, wz = self.w
+        F = np.zeros((10, 10))
+
+        x0 = dt/2
+        x1 = wx*x0
+        x2 = -x1
+        x3 = wy*x0
+        x4 = -x3
+        x5 = wz*x0
+        x6 = -x5
+        x7 = q1*x0
+        x8 = -x7
+        x9 = q2*x0
+        x10 = -x9
+        x11 = q3*x0
+        x12 = -x11
+        x13 = q0*x0
+        x14 = q1**2
+        x15 = 2*x14
+        x16 = q2**2
+        x17 = 2*x16
+        x18 = -x15 - x17 + 1
+        x19 = 1/x18
+        x20 = G*q3
+        x21 = x19*x20
+        x22 = q0**2
+        x23 = 1.0*x22
+        x24 = 1.0*x14
+        x25 = 1.0*x16
+        x26 = q3**2
+        x27 = 1.0*x26
+        x28 = x23 - x24 + x25 - x27
+        x29 = q1*q2
+        x30 = q0*q3
+        x31 = x29 - x30
+        x32 = 0.25*x28**2 + x31**2
+        x33 = 1/sqrt(x32)
+        x34 = 1.0*x33
+        x35 = q1*x34
+        x36 = x28*x35
+        x37 = x21*x36
+        x38 = 2.0*x29 - 2.0*x30
+        x39 = G*q0
+        x40 = x19*x39
+        x41 = x38*x40
+        x42 = q0*q1
+        x43 = 2*q2*q3 + 2*x42
+        x44 = 0.5*x43
+        x45 = x32**(-3/2)
+        x46 = 0.5*x28
+        x47 = x45*(-q0*x46 + q3*x31)
+        x48 = x44*x47
+        x49 = x46*x47
+        x50 = x43*x49
+        x51 = G*x19
+        x52 = x33*x51
+        x53 = x38*x52
+        x54 = x44*x53
+        x55 = x35*x41 + x54
+        x56 = x21*x50 + x37 + x41*x48 + x55
+        x57 = G*q2
+        x58 = x19*x57
+        x59 = x36*x58
+        x60 = G*q1
+        x61 = x19*x60
+        x62 = x38*x48
+        x63 = x43*x58
+        x64 = x34*x63
+        x65 = q0*x64
+        x66 = x21*x35
+        x67 = x43*x66
+        x68 = x65 - x67
+        x69 = x24*x53 + x49*x63 + x59 + x61*x62 + x68
+        x70 = x38*x66
+        x71 = x43*x52
+        x72 = x23*x71
+        x73 = x27*x71
+        x74 = x36*x40
+        x75 = x46*x71
+        x76 = x40*x43
+        x77 = -x21*x62 + x49*x76 - x70 + x72 + x73 + x74 + x75
+        x78 = x28*x52
+        x79 = x38*x58
+        x80 = x35*x76
+        x81 = q3*x64
+        x82 = -G - x80 - x81
+        x83 = x35*x79 + x82
+        x84 = -x24*x78 + x48*x79 - x50*x61 + x83
+        x85 = x33*x44
+        x86 = x41*x85
+        x87 = x33*x46
+        x88 = x43*x87
+        x89 = x21*x88
+        x90 = x57 + x86 + x89
+        x91 = x45*(q1*x46 - q2*x31)
+        x92 = x44*x91
+        x93 = x46*x91
+        x94 = x43*x93
+        x95 = x43/x18**2
+        x96 = x39*x95
+        x97 = 2.0*x33
+        x98 = q1*x97
+        x99 = x96*x98
+        x100 = x20*x95
+        x101 = x28*x98
+        x102 = 1.0*x30
+        x103 = x102*x78 + x68
+        x104 = x100*x101 + x103 + x21*x94 + x23*x53 + x38*x99 + x41*x92
+        x105 = q0*x34
+        x106 = x28*x58
+        x107 = x105*x106
+        x108 = G*x95
+        x109 = x108*x97
+        x110 = x109*x14
+        x111 = x38*x92
+        x112 = x57*x95
+        x113 = x101*x112
+        x114 = x107 + x110*x38 + x111*x61 + x113 + x55 + x63*x93
+        x115 = x102*x53
+        x116 = x38*x98
+        x117 = -x100*x116 - x111*x21 - x115 + x23*x78 + x28*x99 + x76*x93 + x82
+        x118 = x105*x79
+        x119 = x112*x116 + x24*x71 + x25*x71
+        x120 = -x110*x28 + x118 + x119 - x61*x94 - x74 - x75 + x79*x92
+        x121 = x38*x85
+        x122 = x121*x61 - x20 + x63*x87
+        x123 = x79*x85
+        x124 = x61*x88
+        x125 = q3*x34
+        x126 = x125*x79
+        x127 = x109*x16
+        x128 = x45*(-q1*x31 - q2*x46)
+        x129 = x128*x44
+        x130 = x128*x46
+        x131 = x130*x43
+        x132 = -x113 + x126 + x127*x38 + x129*x79 - x131*x61 - x37 + x54
+        x133 = x112*x97
+        x134 = q0*x133
+        x135 = x129*x38
+        x136 = q3*x133
+        x137 = x103 + x130*x76 + x134*x28 - x135*x21 - x136*x38 - x27*x53
+        x138 = G + x115 + x129*x41 + x131*x21 + x134*x38 + x136*x28 + x27*x78 + x80 + x81
+        x139 = x106*x125 + x75
+        x140 = x119 + x127*x28 + x130*x63 + x135*x61 + x139 + x70
+        x141 = x45*(q0*x31 + q3*x46)
+        x142 = x141*x44
+        x143 = x141*x46
+        x144 = x143*x43
+        x145 = x118 + x139 + x142*x41 + x144*x21 - x72 - x73
+        x146 = x142*x38
+        x147 = x143*x63 + x146*x61 + x25*x78 + x83
+        x148 = x107 - x126 + x143*x76 - x146*x21 - x54
+        x149 = x142*x79 - x144*x61 + x25*x53 - x59 - x65 + x67
+        x150 = x76*x87
+        x151 = x121*x21
+        x152 = x150 - x151 - x60
+        x153 = x123 - x124 - x39
+        x154 = 1/tas
+        x155 = 4*x154
+        x156 = x155*x58
+        x157 = x156*x42
+        x158 = x14*x155
+        x159 = 2*x154
+        x160 = x159*x43
+        x161 = x160*x58
+        x162 = -x161
+        x163 = x155*x22
+        x164 = 8*x154
+        x165 = x14*x164
+        x166 = x112*x164
+        x167 = x166*x42
+        x168 = x160*x21
+        x169 = x155*x30*x61 + x168
+        x170 = x156*x30
+        x171 = x155*x26
+        x172 = x160*x40
+        x173 = q1*q3
+        x174 = x166*x173
+        x175 = x16*x164
+        x176 = x155*x16
+        x177 = x160*x61
+        x178 = x156*x173 + x177
+        x179 = q1**3
+        x180 = x159*x51
+        x181 = x159*x61
+        x182 = x154*x17
+        x183 = x15*x154
+        x184 = x159*x26
+        x185 = x108*x155
+        x186 = x60*x95
+        x187 = x159*x22
+        x188 = q2**3
+        F[0, 0] = 1
+        F[0, 1] = x2
+        F[0, 2] = x4
+        F[0, 3] = x6
+        F[0, 7] = x8
+        F[0, 8] = x10
+        F[0, 9] = x12
+        F[1, 0] = x1
+        F[1, 1] = 1
+        F[1, 2] = x5
+        F[1, 3] = x4
+        F[1, 7] = x13
+        F[1, 8] = x12
+        F[1, 9] = x9
+        F[2, 0] = x3
+        F[2, 1] = x6
+        F[2, 2] = 1
+        F[2, 3] = x1
+        F[2, 7] = x11
+        F[2, 8] = x13
+        F[2, 9] = x8
+        F[3, 0] = x5
+        F[3, 1] = x3
+        F[3, 2] = x2
+        F[3, 3] = 1
+        F[3, 7] = x10
+        F[3, 8] = x7
+        F[3, 9] = x13
+        F[4, 0] = q0*x56 + q1*x69 - q2*x84 + q3*x77 + x90
+        F[4, 1] = q0*x104 + q1*x114 - q2*x120 + q3*x117 + x122
+        F[4, 2] = q0*x138 + q1*x140 - q2*x132 + q3*x137 - x123 + x124 + x39
+        F[4, 3] = q0*x145 + q1*x147 - q2*x149 + q3*x148 + x152
+        F[5, 0] = q0*x77 + q1*x84 + q2*x69 - q3*x56 + x152
+        F[5, 1] = q0*x117 + q1*x120 + q2*x114 - q3*x104 + x153
+        F[5, 2] = q0*x137 + q1*x132 + q2*x140 - q3*x138 + x122
+        F[5, 3] = q0*x148 + q1*x149 + q2*x147 - q3*x145 - x57 - x86 - x89
+        F[6, 0] = q0*x84 - q1*x77 + q2*x56 + q3*x69 + x153
+        F[6, 1] = q0*x120 - q1*x117 + q2*x104 + q3*x114 - x150 + x151 + x60
+        F[6, 2] = q0*x132 - q1*x137 + q2*x138 + q3*x140 + x90
+        F[6, 3] = q0*x149 - q1*x148 + q2*x145 + q3*x147 + x122
+        F[7, 0] = -x157 + x158*x21 + x162
+        F[7, 1] = x100*x165 - x163*x58 - x167 + x169
+        F[7, 2] = -x170 + x171*x61 - x172 + x174 - x175*x96
+        F[7, 3] = -x176*x40 + x178
+        F[8, 0] = x158*x40 + x178
+        F[8, 1] = x163*x61 + x165*x96 + x170 + x172 + x174
+        F[8, 2] = x100*x175 + x167 + x169 + x171*x58
+        F[8, 3] = x157 + x161 + x176*x21
+        F[9, 0] = x172 - x179*x180 + x181*x22 + x181*x26 - x182*x61
+        F[9, 1] = q0**3*x180 + x163*x186 + x171*x186 - x176*x186 - x177 - x179*x185 - x182*x40 - x183*x40 + x184*x40
+        F[9, 2] = q3**3*x180 - x112*x158 + x112*x163 + x112*x171 + x162 - x182*x21 - x183*x21 - x185*x188 + x187*x21
+        F[9, 3] = x168 - x180*x188 - x183*x58 + x184*x58 + x187*x58
+
         return F

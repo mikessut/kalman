@@ -25,7 +25,7 @@ scratch.o: scratch.cpp
 
 scratch: scratch.o
 
-kf_pic: kalman.cpp
+kalman_pic.o: kalman.cpp
 	$(CXX) $(CPPFLAGS) -c -fpic kalman.cpp -o kalman_pic.o
 
 python: kalman_pic.o
@@ -33,5 +33,7 @@ python: kalman_pic.o
 	$(CXX) -shared -o libkalman.so kalman_python_wrapper.o kalman_pic.o
 
 clean:
-	rm $(OBJS)
-	rm kf
+	rm -f $(OBJS)
+	rm -f kalman_pic.o
+	rm -f libkalman.so
+	rm -f kf

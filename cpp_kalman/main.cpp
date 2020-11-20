@@ -21,14 +21,16 @@ int main() {
   airspeed_altitude(80000.0, 5000.0, 30.12, 19.2,
                     &altitude, &ias, &tas);
 
-  printf("Alt: %.0f; IAS: %.1f; TAS: %.1f", altitude, ias, tas);
+  printf("Alt: %.0f; IAS: %.1f; TAS: %.1f\n", altitude, ias, tas);
   
   Kalman k;
 
   cout << k << endl;
 
-  k.predict(.01);
+  k.predict(.01, 100*K2ms);
   k.update_accel(Vector3f(.1,0,-9));
+  k.update_gyro(Vector3f(.1,0,-9));
+  k.update_mag(Vector3f(.1,0,-9));
   cout << k << endl;
   return 0;
  
@@ -49,7 +51,7 @@ int main() {
       ofs << endl;
 
       ifs >> dt;
-      k.predict(dt);
+      k.predict(dt, 100);
       t += dt;
     } else if (c == "a") {
       ifs >> x;

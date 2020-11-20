@@ -15,9 +15,9 @@ LIBEXPORT void* PrintState(void* ptr) {
 }
 
 
-LIBEXPORT void predict(void *ptr, float dt) {
+LIBEXPORT void predict(void *ptr, float dt, float tas) {
     Kalman* ref = reinterpret_cast<Kalman*>(ptr);
-    ref->predict(dt);
+    ref->predict(dt, tas);
 }
 
 
@@ -42,4 +42,9 @@ LIBEXPORT void update_mag(void *ptr, float x, float y, float z) {
 LIBEXPORT void* state_ptr(void *ptr) {
     Kalman* ref = reinterpret_cast<Kalman*>(ptr);
     ref->x.data();
+}
+
+LIBEXPORT float get_P(void *ptr, int i, int j) {
+    Kalman* ref = reinterpret_cast<Kalman*>(ptr);
+    return ref->get_P(i, j);
 }

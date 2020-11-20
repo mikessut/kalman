@@ -83,12 +83,12 @@ class Timer:
 
 def flightgear_loop(plot_q):
     t = time.time()
-    kf = FixedWingEKF()
-    #kf = KalmanCpp()
+    #kf = FixedWingEKF()
+    kf = KalmanCpp()
     #kf.set_heading(180)
     #kf.es[2] = 180*np.pi/180
-    # q = quaternion.from_rotation_vector(np.array([0, 0, 1])*204*np.pi/180)
-    # kf.q = quaternion.as_float_array(q)
+    #q = quaternion.from_rotation_vector(np.array([0, 0, 1])*180*np.pi/180)
+    #kf.q = quaternion.as_float_array(q)
 
     timer = Timer()
 
@@ -113,7 +113,7 @@ def flightgear_loop(plot_q):
 
         dt = time.time() - t
         t = time.time()
-        kf.predict(dt)
+        kf.predict(dt, airspeed * KTS2MS)
         
 
         # Accel update

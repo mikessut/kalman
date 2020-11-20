@@ -10,8 +10,11 @@
 #define DT .038
 #define PI 3.141592653589793
 #define g  9.81
+#define G  g
 #define K2ms  1852.0/3600.0   // Convert knots to m/s; 1852m = 1nm
 #define ft2m  1.0/3.28084
+
+#define MIN_TAS  70*K2ms
 
 #define ACCEL_MEAS_ERR  1.5
 #define GYRO_MEAS_ERR  .0001
@@ -34,6 +37,9 @@
 #define I_WX    7
 #define I_WY    8
 #define I_WZ    9
+#define I_WBX   10
+#define I_WBY   11
+#define I_WBZ   12
 
 using namespace Eigen;
 using namespace std;
@@ -51,15 +57,15 @@ private:
   float Raccel = ACCEL_MEAS_ERR;
   float Rgyro = GYRO_MEAS_ERR;
   float Rmag = MAG_MEAS_ERR;
-  Matrix<float, NSTATES, NSTATES> calcF(float dt);
+  Matrix<float, NSTATES, NSTATES> calcF(float dt, float tas);
   Matrix<float, 2, NSTATES> calc_mag_H();
   void q_normalize();
-  
+
 
 public:
   Matrix <float, NSTATES, 1> x;  // should be private, but public for testing
   Kalman();
-  void predict(float dt);
+  void predict(float dt, float tas);
   void update_accel(Matrix<float, 3, 1> a);
   void update_gyro(Matrix<float, 3, 1> w);
   void update_mag(Matrix<float, 3, 1> m);
@@ -80,6 +86,17 @@ public:
     for (int i=0; i < NSTATES; i++) 
       cout << x(i) << endl;
   }
+  float * Qdiaganol() {
+    return Q.diagonal().data();
+  }
+
+  float roll();
+  float pitch();
+  float heading();
+
+  float get_P(int i, int j) {
+    return P(i, j);
+  }
 };
 
 ostream& operator<<(ostream &ofs, const Kalman &k);
@@ -87,4 +104,6 @@ ostream& operator<<(ostream &ofs, const Kalman &k);
 float q2roll(Eigen::Quaternion<float> q);
 float q2pitch(Eigen::Quaternion<float> q);
 float q2heading(Eigen::Quaternion<float> q);
+
+float positive_heading(float);
 #endif
