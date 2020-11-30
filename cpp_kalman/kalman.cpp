@@ -17,12 +17,12 @@ Kalman::Kalman() {
   //   P(I_AX+i, I_AX+i) = pow(.03*g, 2);
   // }
 
-  float aerr_x = pow(.01*g, 2.0);  // confidence that ax, ay, az is from phi/TAS
-  float aerr_y = pow(.1*g, 2.0);
-  float aerr_z = pow(.01*g, 2.0);
-  float werr_x = pow(10*PI/180, 2) / 1;
-  float werr_y = pow(10*PI/180, 2) / 1;
-  float werr_z = pow(2*PI/180, 2) / 1;
+  float aerr_x = pow(2*g, 2.0);  // confidence that ax, ay, az is from phi/TAS
+  float aerr_y = pow(2*g, 2.0);
+  float aerr_z = pow(4*g, 2.0);
+  float werr_x = pow(500*PI/180, 2) / 1;
+  float werr_y = pow(500*PI/180, 2) / 1;
+  float werr_z = pow(5*PI/180, 2) / 1;
 
   float wberr = pow(.02*PI/180, 2) / 120.0;
 
@@ -44,7 +44,7 @@ Kalman::Kalman() {
 void Kalman::predict(float dt, float tas) {
   Eigen::Quaternion<float> q(x(0), x(1), x(2), x(3));
 
-  tas = max(float(MIN_TAS), tas);
+  tas = max(float(KF_MIN_SPEED_MS), tas);
   
   float roll = q2roll(q);
   Eigen::Matrix<float, 3, 1> ac = (q*Eigen::Quaternion<float>(0, 0, 1.0, 0)*q.inverse()).vec();

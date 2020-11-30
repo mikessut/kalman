@@ -10,4 +10,15 @@
     b. Altitude calcs
     c. VS calcs
     d. Filter altitude simple IIR?
+    e. Debug output
+        over CAN? 
+    f. Be able to flash STM32 from linux
+    g. Predict timer for KF
+    h. Send CAN to STM32
+        - Mag hard/soft iron compensation
+    i. Filter tuning
+        - Accel Q needs to be higher
+        - Check Q*dt
 5. Flight test
+    a. Measure actual sensor noise
+    b. Mag calibration

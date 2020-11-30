@@ -81,7 +81,7 @@ class Timer:
             print(f"avg exec time: {self.t / self.n}")
 
 
-def flightgear_loop(plot_q):
+def flightgear_loop(plot_q, run_bool):
     t = time.time()
     #kf = FixedWingEKF()
     kf = KalmanCpp()
@@ -95,11 +95,14 @@ def flightgear_loop(plot_q):
     ctr = 0
     initializing = True
 
+    logfid = open("log.ssv", "w")
 
-    while True:
+    while run_bool.is_set():
         data, addr = client.recvfrom(1024)
         data = struct.unpack('>' + 'f'*11, data)
 
+        # rotation rates are in rad/sec
+        # accels are in ft/s2
         airspeed, altitude, head, roll, pitch, rollrate, pitchrate, yawrate, ax, ay, az = data
         #airspeed, altitude, head, roll, pitch, rollrate, pitchrate, yawrate, ax, ay, az = (0 for _ in range(11))
         ax /= G_FTS2
@@ -159,26 +162,40 @@ def flightgear_loop(plot_q):
         #                     kf.P[1, 1],
         #                     kf.P[2, 2]]))
         #                     #kf.P[3, 3]]))
-        plot_q.put(np.array([kf.P[0, 0], kf.P[1, 1], kf.P[2,2], kf.P[3,3]]))
+        #plot_q.put(np.array([kf.P[0, 0], kf.P[1, 1], kf.P[2,2], kf.P[3,3]]))
         #plot_q.put(np.array([kf.a[0], a[0], kf.a[1], a[1]]))
         #plot_q.put(np.array([kf.w[0], w[0], kf.w[1], w[1]]))
         netfix_client.writeValue("ROT", turn_rate)
         netfix_client.writeValue("ALAT", kf.a[1] / G_MS2)
         netfix_client.writeValue("ALT", altitude)
         #print(kf.P)
+        logfid.write(f"{time.time()} {a[0]} {a[1]} {a[2]} {w[0]} {w[1]} {w[2]}\n")
 
         ctr += 1
+
+    logfid.close()
 
 
 if __name__ == '__main__':
     q = queue.Queue()
-    thread = threading.Thread(target=flightgear_loop, args=(q,))
+    run_bool = threading.Event()
+    run_bool.set()
+    thread = threading.Thread(target=flightgear_loop, args=(q, run_bool))
     thread.start()
     #p = plotting.Plotter(1000, q, ['Proll', 'Ppitch', 'Phead'])
-    p = plotting.Plotter(1000, q, ['Pq0', 'Pq1', 'Pq2', 'Pq3'])
+    #p = plotting.Plotter(1000, q, ['Pq0', 'Pq1', 'Pq2', 'Pq3'])
     #p = plotting.Plotter(1000, q, ['kf.ax', 'ax', 'kf.ay', 'ay'])
     #p = plotting.Plotter(1000, q, ['kf.wx', 'wx', 'kf.wy', 'wy'])
     #p.app.exec() # This plots from qt start
-    QtGui.QApplication.instance().exec_()
+    #QtGui.QApplication.instance().exec_()
+
+    while True:
+        try:
+            time.sleep(.5)
+        except KeyboardInterrupt:
+            run_bool.clear()
+            print("Interrupte received. Exiting...")
+            break
+
 
     

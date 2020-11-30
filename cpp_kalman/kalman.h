@@ -14,12 +14,13 @@
 #define K2ms  1852.0/3600.0   // Convert knots to m/s; 1852m = 1nm
 #define ft2m  1.0/3.28084
 
-#define MIN_TAS  70*K2ms
+#define ACCEL_MEAS_ERR  1.5    // m/s^2
+#define GYRO_MEAS_ERR   0.01   // rad/sec
+#define MAG_MEAS_ERR    0.01   // in normalized heading vector units
 
-#define ACCEL_MEAS_ERR  1.5
-#define GYRO_MEAS_ERR  .0001
-#define MAG_MEAS_ERR  .01
-
+// TAS shows up in the denominator of some of the calculations and thus can't go to
+// zero.  This parameter limits the minimum value used in the calcualtions.
+#define KF_MIN_SPEED_MS    10*K2ms
 
 #define NSTATES 10
 // States

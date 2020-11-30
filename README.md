@@ -2,7 +2,13 @@ Overview
 ========
 
 This is an effort to derive and implement an Extended Kalman Filter to use for
-an arcraft AHRS system.
+an arcraft AHRS system.  
+
+1. Derivations of the Kalman filter equations are presented in Jupyter Notebooks.
+2. The Kalman filter is implemented in both python/numpy as well as c++.
+   a. The KF can be tested with output from the [Flightgear simulator](https://www.flightgear.org/) using 
+      `flightgear.py`.  This script can run the KF with either the numpy or c++ implementations
+   b. 
 
 References
 ==========
