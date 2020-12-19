@@ -487,3 +487,16 @@ float Kalman::turn_rate() {
   Quaternion<float> q(x(0), x(1), x(2), x(3));
   return (q * Quaternion<float>(0, x(I_WX), x(I_WY), x(I_WZ)) * q.inverse()).vec()(2);
 }
+
+void Kalman::set_heading(float heading_to_set) {
+  Quaternion<float> q(x(0), x(1), x(2), x(3));
+  float current_heading = heading();
+  // Remove heading from quaternion
+  q = Quaternion<float>(AngleAxis<float>(current_heading, Matrix<float, 3, 1>(0, 0, -1.0))) * q;
+  // rotate back with new heading
+  q = Quaternion<float>(AngleAxis<float>(heading_to_set, Matrix<float, 3, 1>(0, 0, 1.0))) * q;
+  x(I_Q0) = q.w();
+  x(I_Q1) = q.x();
+  x(I_Q2) = q.y();
+  x(I_Q3) = q.z();
+}

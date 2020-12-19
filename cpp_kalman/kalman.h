@@ -95,6 +95,7 @@ public:
   float roll();
   float pitch();
   float heading();
+  void set_heading(float heading);
 
   float turn_rate();
 
