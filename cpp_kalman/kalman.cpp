@@ -1,28 +1,21 @@
-
 #include "kalman.h"
 
 
 Kalman::Kalman() {
-  
+  initialize();
+}
+
+
+void Kalman::initialize() {
   // Setup P matrix
   P = Matrix<float, NSTATES, NSTATES>::Zero();
-  // P(I_Q0, I_Q0) = pow(.3, 2);
-  // P(I_Q1, I_Q1) = pow(.1, 2);
-  // P(I_Q2, I_Q2) = pow(.1, 2);
-  // P(I_Q3, I_Q3) = 100;  // Allows for faster init of mag to heading
-// 
-  // for (int i=0; i < 3; i++) {
-  //   // 2 degree error
-  //   // sin(2deg) = .03
-  //   P(I_AX+i, I_AX+i) = pow(.03*g, 2);
-  // }
-
+  
   float aerr_x = pow(2*g, 2.0);  // confidence that ax, ay, az is from phi/TAS
   float aerr_y = pow(2*g, 2.0);
   float aerr_z = pow(4*g, 2.0);
   float werr_x = pow(500*PI/180, 2) / 1;
   float werr_y = pow(500*PI/180, 2) / 1;
-  float werr_z = pow(5*PI/180, 2) / 1;
+  float werr_z = pow(50*PI/180, 2) / 1;
 
   float wberr = pow(.02*PI/180, 2) / 120.0;
 
@@ -122,8 +115,8 @@ void Kalman::update_mag(Matrix<float, 3, 1> m)
   float heading = q2heading(q);
 
   // Remove roll and pitch from sensor reading to compute sensor heading vector
-  Quaternion<float> qtmp = Quaternion<float>(AngleAxis<float>(roll, Matrix<float, 3, 1>(1.0, 0, 0))) *
-                           Quaternion<float>(AngleAxis<float>(pitch, Matrix<float, 3, 1>(0, 1.0, 0)));
+  Quaternion<float> qtmp = Quaternion<float>(AngleAxis<float>(pitch, Matrix<float, 3, 1>(0, 1.0, 0))) *
+                           Quaternion<float>(AngleAxis<float>(roll, Matrix<float, 3, 1>(1.0, 0, 0)));
   Matrix<float, 3, 1> sensor_heading = (qtmp * Quaternion<float>(0, m(0), m(1), m(2)) * qtmp.inverse()).vec();
   sensor_heading(2) = 0;
   sensor_heading.normalize();
@@ -488,4 +481,9 @@ float positive_heading(float head_rad) {
   } else {
     return head_rad;
   }
+}
+
+float Kalman::turn_rate() {
+  Quaternion<float> q(x(0), x(1), x(2), x(3));
+  return (q * Quaternion<float>(0, x(I_WX), x(I_WY), x(I_WZ)) * q.inverse()).vec()(2);
 }
