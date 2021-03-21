@@ -14,15 +14,25 @@
 #define K2ms  1852.0/3600.0   // Convert knots to m/s; 1852m = 1nm
 #define ft2m  1.0/3.28084
 
-#define ACCEL_MEAS_ERR  pow(1.5 , 2)   // m/s^2
-#define GYRO_MEAS_ERR   pow(0.01, 2)   // rad/sec
+// 12/20 offline debug changed to high side of what I see in data.
+// #define ACCEL_MEAS_ERR  pow(1.5 , 2)   // m/s^2
+// #define GYRO_MEAS_ERR   pow(0.01, 2)   // rad/sec
+#define ACCEL_MEAS_ERR  pow(2.5 , 2)   // m/s^2
+#define GYRO_MEAS_ERR   pow(0.1, 2)   // rad/sec
 #define MAG_MEAS_ERR    pow(0.3 , 2)  // in normalized heading vector units sin(20deg) ??
 
 // TAS shows up in the denominator of some of the calculations and thus can't go to
 // zero.  This parameter limits the minimum value used in the calcualtions.
 #define KF_MIN_SPEED_MS    10*K2ms
 
+//#define BIAS_STATES
+
+#ifdef BIAS_STATES
+#define NSTATES 16
+#else
 #define NSTATES 10
+#endif
+
 // States
 // Quaternion of orientation q0, q1, q2, q3
 // body acceleration
@@ -41,6 +51,9 @@
 #define I_WBX   10
 #define I_WBY   11
 #define I_WBZ   12
+#define I_ABX   13
+#define I_ABY   14
+#define I_ABZ   15
 
 using namespace Eigen;
 using namespace std;

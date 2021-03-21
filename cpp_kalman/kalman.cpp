@@ -17,14 +17,21 @@ void Kalman::initialize() {
   float werr_y = pow(500*PI/180, 2) / 1;
   float werr_z = pow(50*PI/180, 2) / 1;
 
-  float wberr = pow(.02*PI/180, 2) / 120.0;
-
   Matrix<float, NSTATES, 1> tmpv;
-  // Build Q matrix
+  #ifdef BIAS_STATES
+  float wberr = pow(.5*PI/180, 2) / 240.0;
+  float aberr = pow(.1*G, 2) / 240.0;
+  tmpv << 0, 0, 0, 0, 
+          aerr_x, aerr_y, aerr_z,
+          werr_x, werr_y, werr_z,
+          wberr, wberr, wberr,
+          aberr, aberr, aberr;
+  #else
   tmpv << 0, 0, 0, 0, 
           aerr_x, aerr_y, aerr_z,
           werr_x, werr_y, werr_z;
-          //wberr, wberr, wberr;
+  #endif
+  // Build Q matrix
   Q = tmpv.asDiagonal();
 
   // Initialize state vector
@@ -77,11 +84,21 @@ void Kalman::predict(float dt, float tas) {
 
 
 void Kalman::update_accel(Matrix<float, 3, 1> a) {
+  #ifdef BIAS_STATES
+  Matrix<float, 3, 1> y = a - x.block(I_AX, 0, 3, 1) - x.block(I_ABX, 0, 3, 1);
+  #else
   Matrix<float, 3, 1> y = a - x.block(I_AX, 0, 3, 1);
+  #endif
   Matrix<float, 3, NSTATES> H = Matrix<float, 3, NSTATES>::Zero();
   H(0,4) = 1;
   H(1,5) = 1;
   H(2,6) = 1;
+  #ifdef BIAS_STATES
+  H(0,13) = 1;
+  H(1,14) = 1;
+  H(2,15) = 1;
+  #endif
+
   Matrix<float, 3, 3> S = H * P * H.transpose() + Eigen::Matrix<float, 3, 3>::Identity() * Raccel;
   Matrix<float, NSTATES, 3> K = P * H.transpose() * S.inverse();
   x = x + K*y;
@@ -91,14 +108,20 @@ void Kalman::update_accel(Matrix<float, 3, 1> a) {
 
 
 void Kalman::update_gyro(Matrix<float, 3, 1> w) {
-  Matrix<float, 3, 1> y = w - x.block(I_WX, 0, 3, 1); // - x.block<3, 1>(I_WBX, 0);
+  #ifdef BIAS_STATES
+  Matrix<float, 3, 1> y = w - x.block(I_WX, 0, 3, 1) - x.block(I_WBX, 0, 3, 1);
+  #else
+  Matrix<float, 3, 1> y = w - x.block(I_WX, 0, 3, 1); 
+  #endif
   Matrix<float, 3, NSTATES> H = Matrix<float, 3, NSTATES>::Zero();
   H(0,7) = 1;
   H(1,8) = 1;
   H(2,9) = 1;
-  // H(0,10) = 1;
-  // H(1,11) = 1;
-  // H(2,12) = 1;
+  #ifdef BIAS_STATES
+  H(0,10) = 1;
+  H(1,11) = 1;
+  H(2,12) = 1;
+  #endif
   Matrix<float, 3, 3> S = H * P * H.transpose() + Eigen::Matrix<float, 3, 3>::Identity() * Rgyro;
   Matrix<float, NSTATES, 3> K = P * H.transpose() * S.inverse();
   x = x + K*y;
@@ -396,6 +419,12 @@ Eigen::Matrix<float, NSTATES, NSTATES> Kalman::calcF(float dt, float tas) {
   F(9, 1) = pow(q0, 3)*x180 + x163*x186 + x171*x186 - x176*x186 - x177 - x179*x185 - x182*x40 - x183*x40 + x184*x40;
   F(9, 2) = pow(q3, 3)*x180 - x112*x158 + x112*x163 + x112*x171 + x162 - x182*x21 - x183*x21 - x185*x188 + x187*x21;
   F(9, 3) = x168 - x180*x188 - x183*x58 + x184*x58 + x187*x58;
+
+  #ifdef BIAS_STATES
+  for (int i=0; i < 6; i++) {
+    F(10+i, 10+i) = 1.0;
+  }
+  #endif
 
   return F;
 }
