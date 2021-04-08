@@ -32,7 +32,7 @@ def tas(ias, TdegC, altitude, altimeter=29.92126):
     p_sealevel = altimeter*inHg2PA
     p1 = p_sealevel*(1-L*h/T0)**(g*M/R/L)
     p = (p_sealevel**(L*R/g/M) - L/T0*P0**(L*R/g/M)*h)**(g*M/L/R)
-    print(p1, p)
+    #print(p1, p)
     rho = p*M/R/T
 
     PA = (1-(p/P0)**(R*L/g/M))*T0/L/ft2m
@@ -42,6 +42,24 @@ def tas(ias, TdegC, altitude, altimeter=29.92126):
     DA = T0/L*(1-(R*T0*rho/M/P0)**(L*R/(g*M-L*R)))/ft2m
 
     return ias*np.sqrt(RHO0/rho), PA, DA
+
+
+def ias(tas, TdegC, altitude, altimeter=29.92126):
+    T = 273.15 + TdegC
+    h = altitude*ft2m
+    p_sealevel = altimeter*inHg2PA
+    p1 = p_sealevel*(1-L*h/T0)**(g*M/R/L)
+    p = (p_sealevel**(L*R/g/M) - L/T0*P0**(L*R/g/M)*h)**(g*M/L/R)
+    #print(p1, p)
+    rho = p*M/R/T
+
+    PA = (1-(p/P0)**(R*L/g/M))*T0/L/ft2m
+    rho_DA = p1*M/R/T
+    p_DA = rho_DA/M*R*(T0 - L*h)
+    #DA = (1-(p_DA/P0)**(R*L/g/M))*T0/L/ft2m
+    DA = T0/L*(1-(R*T0*rho/M/P0)**(L*R/(g*M-L*R)))/ft2m
+
+    return tas / np.sqrt(RHO0/rho), PA, DA
 
 
 def altitude(press, altimeter=29.92126):
@@ -84,24 +102,25 @@ def wind_vector(v_total, v_aircraft, mag_angle=True):
         return vwind
 
 
-"""
-head_track = 360
-head_mag = 10
+def test_case():
+    """
+    head_track = 360
+    head_mag = 10
 
-gndspd = 250
-tas1 = 235
+    gndspd = 250
+    tas1 = 235
 
-vtot = np.array([np.cos(head_track*np.pi/180), np.sin(head_track*np.pi/180)])*gndspd
-vaircraft = np.array([np.cos(head_mag*np.pi/180), np.sin(head_mag*np.pi/180)])*tas1
+    vtot = np.array([np.cos(head_track*np.pi/180), np.sin(head_track*np.pi/180)])*gndspd
+    vaircraft = np.array([np.cos(head_mag*np.pi/180), np.sin(head_mag*np.pi/180)])*tas1
 
-print(wind_vector(vtot,vaircraft))
-"""
-"""
-  airspeed_altitude(80000.0, 5000.0, 30.12, 19.2,
-                    &altitude, &ias, &tas);
+    print(wind_vector(vtot,vaircraft))
+    """
+    """
+    airspeed_altitude(80000.0, 5000.0, 30.12, 19.2,
+                        &altitude, &ias, &tas);
 
-  printf("Alt: %.0f; IAS: %.1f; TAS: %.1f", altitude, ias, tas);
-  """
+    printf("Alt: %.0f; IAS: %.1f; TAS: %.1f", altitude, ias, tas);
+    """
 
-diff_press = 50*1e2  # 50 mbar
-print(f"Alt: {altitude(80000, 30.12)}; IAS: {pitot_ias(5000)}; TAS: {tas(pitot_ias(5000), 19.2, altitude(80000, 30.12), 30.12)}")
+    diff_press = 50*1e2  # 50 mbar
+    print(f"Alt: {altitude(80000, 30.12)}; IAS: {pitot_ias(5000)}; TAS: {tas(pitot_ias(5000), 19.2, altitude(80000, 30.12), 30.12)}")
