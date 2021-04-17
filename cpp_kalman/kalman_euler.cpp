@@ -74,7 +74,7 @@ void KalmanEuler::predict(float dt, float tas) {
   // update state vector
   x(I_HEADING) = q2heading(q);
   x(I_PITCH) = q2pitch(q);
-  x(I_ROLL) = q2pitch(q);
+  x(I_ROLL) = q2roll(q);
   
   for (int i=0; i < 3; i++) {
     x(I_AX+i) = ab(i);
@@ -574,15 +574,15 @@ float q2heading(Eigen::Quaternion<float> q) {
 }
 
 float KalmanEuler::roll() {
-  return q2roll(Quaternion<float>(x(0), x(1), x(2), x(3)));
+  return x(I_ROLL);
 }
 
 float KalmanEuler::pitch() {
-  return q2pitch(Quaternion<float>(x(0), x(1), x(2), x(3)));
+  return x(I_PITCH);
 }
 
 float KalmanEuler::heading() {
-  return q2heading(Quaternion<float>(x(0), x(1), x(2), x(3)));
+  return positive_heading(x(I_HEADING));
 }
 
 float positive_heading(float head_rad) {
@@ -591,12 +591,6 @@ float positive_heading(float head_rad) {
   } else {
     return head_rad;
   }
-}
-
-
-float KalmanEuler::turn_rate() {
-  Quaternion<float> q(x(0), x(1), x(2), x(3));
-  return (q * Quaternion<float>(0, x(I_WX), x(I_WY), x(I_WZ)) * q.inverse()).vec()(2);
 }
 
 void KalmanEuler::set_heading(float heading_to_set) {
