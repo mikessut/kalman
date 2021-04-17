@@ -2,38 +2,52 @@
 CXX := g++
 CC := g++
 # -g is for debug with gdb
-# CPPFLAGS := -I c:\trash\eigen -std=c++17
-CPPFLAGS := -I/usr/include/eigen3 -g
+CPPFLAGS := -I c:/work/eigen -I. -std=c++17
+# CPPFLAGS := -I/usr/include/eigen3 -g
 
-OBJS = main.o kalman.o dcm.o pressure.o
+BUILD_DIR = build
+TEST_DIR = tests
+
+#OBJS = main.o kalman.o dcm.o pressure.o kalman_euler.o
+OBJS = kalman_euler.o
+TESTS = test_heading.o
+
+#kf: $(OBJS)
+#	$(CXX) -o kf $(OBJS)
+
+# debug: CPPFLAGS += -g
+# debug: kf
+
+$(BUILD_DIR)/%.o: %.cpp
+	$(CXX) -c $(CPPFLAGS) $< -o $@
+
+$(BUILD_DIR)/%.o: $(TEST_DIR)/%.cpp
+	$(CXX) -c $(CPPFLAGS) $< -o $@
 
 kf: $(OBJS)
 	$(CXX) -o kf $(OBJS)
 
-debug: CPPFLAGS += -g
-debug: kf
+tests: $(BUILD_DIR)/$(OBJS) $(BUILD_DIR)/$(TESTS)
+	$(CXX) -o $(BUILD_DIR)/tests $(BUILD_DIR)/$(OBJS) $(BUILD_DIR)/$(TESTS)
 
-main.o: main.cpp
+$(BUILD_DIR)/$(TESTS)/%.o:
+	echo $@
+	echo $%
+	echo $<
+	echo $?
+	echo $^
+	echo $+
 
-kalman.o: kalman.cpp kalman.h
 
-dcm.o: dcm.h dcm.cpp
+#kalman_pic.o: kalman.cpp
+#	$(CXX) $(CPPFLAGS) -c -fpic kalman.cpp -o kalman_pic.o
 
-pressure.o: pressure.h pressure.c
+#python: kalman_pic.o
+#	$(CXX) $(CPPFLAGS) -c -fpic kalman_python_wrapper.cpp
+#	$(CXX) -shared -o libkalman.so kalman_python_wrapper.o kalman_pic.o
 
-scratch.o: scratch.cpp
-
-scratch: scratch.o
-
-kalman_pic.o: kalman.cpp
-	$(CXX) $(CPPFLAGS) -c -fpic kalman.cpp -o kalman_pic.o
-
-python: kalman_pic.o
-	$(CXX) $(CPPFLAGS) -c -fpic kalman_python_wrapper.cpp
-	$(CXX) -shared -o libkalman.so kalman_python_wrapper.o kalman_pic.o
-
-clean:
-	rm -f $(OBJS)
-	rm -f kalman_pic.o
-	rm -f libkalman.so
-	rm -f kf
+# clean:
+# 	rm -f $(OBJS)
+# 	rm -f kalman_pic.o
+# 	rm -f libkalman.so
+# 	rm -f kf

@@ -1,0 +1,117 @@
+
+#include <Eigen/Dense>
+#include <iostream>
+#include <cmath>
+
+#ifndef KALMAN_H
+#define KALMAN_H
+
+// Approximate DT
+#define DT .038
+#define PI 3.141592653589793
+#define g  9.81
+#define G  g
+#define K2ms  1852.0/3600.0   // Convert knots to m/s; 1852m = 1nm
+#define ft2m  1.0/3.28084
+
+// 12/20 offline debug changed to high side of what I see in data.
+// #define ACCEL_MEAS_ERR  pow(1.5 , 2)   // m/s^2
+// #define GYRO_MEAS_ERR   pow(0.01, 2)   // rad/sec
+#define ACCEL_MEAS_ERR  pow(2.5 , 2)   // m/s^2
+#define GYRO_MEAS_ERR   pow(0.1, 2)   // rad/sec
+#define MAG_MEAS_ERR    pow(0.3 , 2)  // in normalized heading vector units sin(20deg) ??
+
+// TAS shows up in the denominator of some of the calculations and thus can't go to
+// zero.  This parameter limits the minimum value used in the calcualtions.
+#define KF_MIN_SPEED_MS    10*K2ms
+
+#define BIAS_STATES
+
+#ifdef BIAS_STATES
+#define NSTATES 15
+#else
+#define NSTATES 10
+#endif
+
+// States
+// Quaternion of orientation q0, q1, q2, q3
+// body acceleration
+// body rotational rates
+
+#define I_HEADING  0
+#define I_PITCH    1
+#define I_ROLL     2
+#define I_AX       3
+#define I_AY       4
+#define I_AZ       5
+#define I_WX       6
+#define I_WY       7
+#define I_WZ       8
+#define I_WBX      9
+#define I_WBY      10
+#define I_WBZ      11
+#define I_ABX      12
+#define I_ABY      13
+#define I_ABZ      14
+
+using namespace Eigen;
+using namespace std;
+
+
+class KalmanEuler
+{
+private:
+  int nstates;
+  Matrix<float, NSTATES, NSTATES> P, Q;
+  
+  Matrix<float, NSTATES, Dynamic> update_sensors(Eigen::Matrix<float, Dynamic, NSTATES> H,
+                      int sns_idx, int nsensors);
+
+  float Raccel = ACCEL_MEAS_ERR;
+  float Rgyro = GYRO_MEAS_ERR;
+  float Rmag = MAG_MEAS_ERR;
+  Matrix<float, NSTATES, NSTATES> calcF(float dt, float tas);
+  Matrix<float, 2, NSTATES> calc_mag_H();
+
+
+public:
+  Matrix <float, NSTATES, 1> x;  // should be private, but public for testing
+  KalmanEuler();
+  void initialize();
+  void predict(float dt, float tas);
+  void update_accel(Matrix<float, 3, 1> a);
+  void update_gyro(Matrix<float, 3, 1> w);
+  //void update_mag(Matrix<float, 3, 1> m);
+  void update_gps_bearing(float gps_heading);
+
+  void printDiag(Matrix<float, Dynamic, Dynamic> M) {
+    for (int i=0; i < M.rows(); i++)
+        cout << M(i,i) << endl;
+  };
+
+  friend ostream& operator<<(ostream &ofs, const KalmanEuler &k);
+
+  float * Qdiaganol() {
+    return Q.diagonal().data();
+  }
+
+  float roll();
+  float pitch();
+  float heading();
+  void set_heading(float heading);
+
+  float turn_rate();
+
+  float get_P(int i, int j) {
+    return P(i, j);
+  }
+};
+
+ostream& operator<<(ostream &ofs, const KalmanEuler &k);
+
+float q2roll(Eigen::Quaternion<float> q);
+float q2pitch(Eigen::Quaternion<float> q);
+float q2heading(Eigen::Quaternion<float> q);
+
+float positive_heading(float);
+#endif
