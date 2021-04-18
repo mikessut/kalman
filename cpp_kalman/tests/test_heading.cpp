@@ -35,9 +35,8 @@
 #include <Eigen/Dense>
 
 using namespace std;
-#define M_PI 3.141569
 
-int main() {
+int test_turn() {
   //KalmanEuler kf = KalmanEuler();
   Kalman kf = Kalman();
 
@@ -74,4 +73,44 @@ int main() {
   }
 
   return 0;
+}
+
+int test_heading_update() {
+  //KalmanEuler kf = KalmanEuler();
+  Kalman kf = Kalman();
+
+  //kf.x(2) = 25 * M_PI / 180.0;
+  //Eigen::Quaternion<float> q = Eigen::Quaternion<float>(Eigen::AngleAxis<float>(25 * M_PI / 180.0, Matrix<float, 3, 1>(1.0, 0, 0)));
+  //kf.x(0) = q.w();
+  //kf.x(1) = q.x();
+  //kf.x(2) = q.y();
+  //kf.x(3) = q.z();
+
+
+  for (int i = 0; i < 500; i++) {
+    kf.predict(0.02, 92.6);
+    kf.update_gyro(Matrix<float, 3, 1>(0, 0.0, 0));
+    kf.update_accel(Matrix<float, 3, 1>(0, 0, -9.81));
+    kf.update_gps_bearing(-5 * M_PI / 180.0);
+
+    
+    cout << positive_heading(kf.heading()) * 180.0 / M_PI << endl;
+    cout << kf.pitch() * 180.0 / M_PI << endl;
+    cout << kf.roll() * 180.0 / M_PI << endl;
+
+    // cout << kf.get_P(0, 0) << endl;
+    // cout << kf.get_P(1, 1) << endl;
+    // cout << kf.get_P(2, 2) << endl;
+
+    // for (int j = 3; j < NSTATES; j++) 
+    //   cout << kf.x(j) << endl;
+    cout << endl;
+  }
+
+  return 0;
+}
+
+int main() {
+  test_turn();
+  //test_heading_update();
 }

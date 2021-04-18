@@ -2,8 +2,8 @@
 CXX := g++
 CC := g++
 # -g is for debug with gdb
-CPPFLAGS := -I c:/work/eigen -I. -std=c++17
-# CPPFLAGS := -I/usr/include/eigen3 -g
+# CPPFLAGS := -I c:/work/eigen -I. -std=c++17
+CPPFLAGS := -I/usr/include/eigen3 -I.   # -g
 
 BUILD_DIR = build
 TEST_DIR = tests
