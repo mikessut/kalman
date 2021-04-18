@@ -118,6 +118,10 @@ public:
   float get_P(int i, int j) {
     return P(i, j);
   }
+  void set_Q(int i, int j, float val) {
+    Q(i, j) = val;
+  }
+  float get_Q(int i, int j) { return Q(i, j);}
 };
 
 ostream& operator<<(ostream &ofs, const Kalman &k);
