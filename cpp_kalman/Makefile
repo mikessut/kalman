@@ -9,7 +9,8 @@ BUILD_DIR = build
 TEST_DIR = tests
 
 #OBJS = main.o kalman.o dcm.o pressure.o kalman_euler.o
-OBJS = kalman_euler.o
+#OBJS = kalman_euler.o kalman.o
+OBJS = kalman.o
 TESTS = test_heading.o
 
 #kf: $(OBJS)
