@@ -156,6 +156,31 @@ void Kalman::update_mag(Matrix<float, 3, 1> m)
 }
 
 
+void Kalman::update_gps_bearing(float gps_heading)
+{
+  // Use vector representation of heading to avoid issues of wrapping around 0/360 deg
+  // Represent heading as a vector
+  Eigen::Matrix<float, 2, 1> v_heading = Eigen::Matrix<float, 2, 1>(cos(gps_heading), sin(gps_heading));
+
+  // Get heading from quaternion
+  Matrix<float, 2, 1> y = v_heading - Eigen::Matrix<float, 2, 1>(-2*x(I_Q2)*x(I_Q2) - 2*x(I_Q3)*x(I_Q3),
+                                                                 2*x(I_Q0)*x(I_Q3) + 2*x(I_Q1)*x(I_Q2));
+  Matrix<float, 2, NSTATES> H = Matrix<float, 2, NSTATES>::Zero();
+  H(0, 2) = -4*x(I_Q2);
+  H(0, 3) = -4*x(I_Q3);
+  H(1, 0) = 2*x(I_Q3);
+  H(1, 1) = 2*x(I_Q2);
+  H(1, 2) = 2*x(I_Q1);
+  H(1, 3) = 2*x(I_Q0);
+
+  Matrix<float, 2, 2> S = H * P * H.transpose() + Eigen::Matrix<float, 2, 2>::Identity() * Rgps_heading;
+  Matrix<float, NSTATES, 2> K = P * H.transpose() * S.inverse();
+  x = x + K*y;
+  P = (Eigen::Matrix<float, NSTATES, NSTATES>::Identity() - K*H)*P;
+  q_normalize();
+}
+
+
 void Kalman::q_normalize() {
   Quaternion<float> q(x(I_Q0), x(I_Q1), x(I_Q2), x(I_Q3));
   q.normalize();

@@ -19,13 +19,14 @@
 // #define GYRO_MEAS_ERR   pow(0.01, 2)   // rad/sec
 #define ACCEL_MEAS_ERR  pow(2.5 , 2)   // m/s^2
 #define GYRO_MEAS_ERR   pow(0.1, 2)   // rad/sec
+#define GPS_HEAD_MEAS_ERR 0.005
 #define MAG_MEAS_ERR    pow(0.3 , 2)  // in normalized heading vector units sin(20deg) ??
 
 // TAS shows up in the denominator of some of the calculations and thus can't go to
 // zero.  This parameter limits the minimum value used in the calcualtions.
 #define KF_MIN_SPEED_MS    10*K2ms
 
-//#define BIAS_STATES
+#define BIAS_STATES
 
 #ifdef BIAS_STATES
 #define NSTATES 16
@@ -70,6 +71,7 @@ private:
 
   float Raccel = ACCEL_MEAS_ERR;
   float Rgyro = GYRO_MEAS_ERR;
+  float Rgps_heading = GPS_HEAD_MEAS_ERR;
   float Rmag = MAG_MEAS_ERR;
   Matrix<float, NSTATES, NSTATES> calcF(float dt, float tas);
   Matrix<float, 2, NSTATES> calc_mag_H();
@@ -84,6 +86,7 @@ public:
   void update_accel(Matrix<float, 3, 1> a);
   void update_gyro(Matrix<float, 3, 1> w);
   void update_mag(Matrix<float, 3, 1> m);
+  void update_gps_bearing(float heading);
   
   void printDiag(Matrix<float, Dynamic, Dynamic> M) {
     for (int i=0; i < M.rows(); i++)
